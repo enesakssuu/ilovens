@@ -1,3 +1,4 @@
+import logoIcon from '../assets/logo-icon.png';
 import { useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -139,7 +140,7 @@ export default function Navbar() {
           {/* Logo & Brand Div with Triple Gradient Icon */}
           <Link to={basePath || '/'} className="flex items-center gap-2.5 flex-shrink-0 group">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-blue via-brand-pink to-brand-purple flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform overflow-hidden flex-shrink-0">
-              <img src="/logo-icon.png" alt="iLoveNS" className="w-full h-full object-contain p-0.5" />
+              <img src={logoIcon} alt="iLoveNS" className="w-full h-full object-contain p-0.5" />
             </div>
             <span className="text-[17px] font-bold tracking-tight text-brand-text whitespace-nowrap">iLoveNS</span>
           </Link>

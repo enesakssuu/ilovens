@@ -1,3 +1,4 @@
+import logoImg from '../assets/logo.png';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Shield } from 'lucide-react';
@@ -46,7 +47,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to={basePath || '/'} className="flex items-center gap-2 mb-3">
-              <img src="/logo.png" alt="iLoveNS" className="h-7 w-auto object-contain" />
+              <img src={logoImg} alt="iLoveNS" className="h-7 w-auto object-contain" />
             </Link>
             <p className="text-xs text-apple-secondary leading-relaxed max-w-[180px]">
               {isEnglish
