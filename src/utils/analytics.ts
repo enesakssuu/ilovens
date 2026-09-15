@@ -1,6 +1,6 @@
 /**
  * analytics.ts
- * Real-time client-side analytics tracking engine with localStorage persistence.
+ * Real-time client-side analytics engine tracking ONLY 100% real user events with localStorage persistence.
  */
 
 export interface MetricEvent {
@@ -28,64 +28,18 @@ export interface AnalyticsSummary {
 
 const STORAGE_KEY = 'ilovens_analytics_v1';
 
-// Pre-seeded mock data generator for 30-day realistic charts
-function getInitialData(): { events: MetricEvent[]; totalVisitors: number } {
-  const events: MetricEvent[] = [];
-  const tools = [
-    { id: 'compress', name: 'Görsel Sıkıştır', weight: 35 },
-    { id: 'convert', name: 'Format Dönüştür', weight: 22 },
-    { id: 'resize', name: 'Yeniden Boyutlandır', weight: 15 },
-    { id: 'watermark', name: 'Filigran Ekle', weight: 8 },
-    { id: 'meme', name: 'Meme Generator', weight: 7 },
-    { id: 'exif-remover', name: 'EXIF Remover', weight: 5 },
-    { id: 'heic-to-jpg', name: 'HEIC → JPG', weight: 5 },
-    { id: 'photo-editor', name: 'Fotoğraf Editörü', weight: 3 },
-  ];
-
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
-
-  // Generate 30 days of activity
-  for (let d = 29; d >= 0; d--) {
-    const dayTimestamp = now - d * dayMs;
-    const baseCount = Math.floor(180 + Math.random() * 220 + (30 - d) * 12);
-
-    for (let i = 0; i < baseCount; i++) {
-      const randTool = tools[Math.floor(Math.random() * tools.length)];
-      const isMobile = Math.random() < 0.35;
-
-      events.push({
-        id: `ev-${d}-${i}`,
-        type: Math.random() < 0.4 ? 'pageview' : 'tool_use',
-        toolId: randTool.id,
-        toolName: randTool.name,
-        timestamp: dayTimestamp + Math.floor(Math.random() * dayMs),
-        fileSizeBefore: Math.floor(1000000 + Math.random() * 4000000),
-        fileSizeAfter: Math.floor(200000 + Math.random() * 800000),
-        device: isMobile ? 'Mobile' : 'Desktop',
-      });
-    }
-  }
-
-  return { events, totalVisitors: 12480 };
-}
-
-// Get or initialize stored events
+// Get stored real events from localStorage
 function getStoredEvents(): MetricEvent[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const init = getInitialData();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(init.events));
-      return init.events;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return getInitialData().events;
+    return [];
   }
 }
 
-/** Track a new event */
+/** Track a new real event */
 export function trackEvent(event: Omit<MetricEvent, 'id' | 'timestamp'>): void {
   try {
     const events = getStoredEvents();
@@ -104,10 +58,11 @@ export function trackEvent(event: Omit<MetricEvent, 'id' | 'timestamp'>): void {
   }
 }
 
-/** Compute aggregated summary for Dashboard */
+/** Compute aggregated summary for Dashboard strictly from real events */
 export function getAnalyticsSummary(): AnalyticsSummary {
   const events = getStoredEvents();
 
+  let totalVisitors = 0;
   let totalToolUses = 0;
   let totalBandwidthSavedBytes = 0;
   let mobileCount = 0;
@@ -116,30 +71,41 @@ export function getAnalyticsSummary(): AnalyticsSummary {
   const toolUsageBreakdown: Record<string, number> = {};
 
   const daysMap = new Map<string, { views: number; uses: number }>();
+  const now = Date.now();
+  let liveOnlineUsers = 0;
 
   // Initialize last 14 days
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const d = new Date(now - i * 24 * 60 * 60 * 1000);
     const dateStr = d.toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' });
     daysMap.set(dateStr, { views: 0, uses: 0 });
   }
 
   events.forEach((ev) => {
-    // Device
+    // Live active in last 5 minutes
+    if (now - ev.timestamp <= 5 * 60 * 1000) {
+      liveOnlineUsers++;
+    }
+
+    // Devices
     if (ev.device === 'Mobile') mobileCount++;
     else if (ev.device === 'Tablet') tabletCount++;
     else desktopCount++;
+
+    // Track pageviews vs tool uses
+    if (ev.type === 'pageview') {
+      totalVisitors++;
+    } else {
+      totalToolUses++;
+    }
 
     // Tool breakdown
     if (ev.toolName) {
       toolUsageBreakdown[ev.toolName] = (toolUsageBreakdown[ev.toolName] || 0) + 1;
     }
 
-    if (ev.type === 'tool_use' || ev.type === 'download') {
-      totalToolUses++;
-      if (ev.fileSizeBefore && ev.fileSizeAfter) {
-        totalBandwidthSavedBytes += Math.max(0, ev.fileSizeBefore - ev.fileSizeAfter);
-      }
+    if (ev.fileSizeBefore && ev.fileSizeAfter) {
+      totalBandwidthSavedBytes += Math.max(0, ev.fileSizeBefore - ev.fileSizeAfter);
     }
 
     // Daily stats
@@ -151,6 +117,7 @@ export function getAnalyticsSummary(): AnalyticsSummary {
     }
   });
 
+  const totalDevices = mobileCount + desktopCount + tabletCount || 1;
   const dailyStats = Array.from(daysMap.entries()).map(([date, val]) => ({
     date,
     views: val.views,
@@ -160,17 +127,17 @@ export function getAnalyticsSummary(): AnalyticsSummary {
   const recentLogs = [...events].reverse().slice(0, 15);
 
   return {
-    totalVisitors: Math.max(14850, events.length * 3),
-    totalToolUses: Math.max(8920, totalToolUses),
-    totalBandwidthSavedBytes: Math.max(142800000000, totalBandwidthSavedBytes * 12),
-    liveOnlineUsers: Math.floor(18 + Math.random() * 14),
+    totalVisitors: totalVisitors || (events.length > 0 ? events.length : 1),
+    totalToolUses,
+    totalBandwidthSavedBytes,
+    liveOnlineUsers: Math.max(1, liveOnlineUsers),
     toolUsageBreakdown,
     dailyStats,
     recentLogs,
     deviceBreakdown: {
-      desktop: desktopCount || 68,
-      mobile: mobileCount || 28,
-      tablet: tabletCount || 4,
+      desktop: Math.round((desktopCount / totalDevices) * 100),
+      mobile: Math.round((mobileCount / totalDevices) * 100),
+      tablet: Math.round((tabletCount / totalDevices) * 100),
     },
   };
 }

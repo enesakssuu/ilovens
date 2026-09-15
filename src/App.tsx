@@ -28,11 +28,11 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    // Support #/admin, #admin, ?/admin, ?admin fallback URLs
+    // Support #/admin, #admin, ?/admin fallback URLs strictly to /admin
     const hash = window.location.hash.toLowerCase();
     const search = window.location.search.toLowerCase();
-    if (hash.includes('admin') || hash.includes('dashboard') || search.includes('admin') || search.includes('dashboard')) {
-      if (!pathname.includes('admin') && !pathname.includes('dashboard')) {
+    if (hash.includes('admin') || search.includes('admin')) {
+      if (!pathname.includes('admin')) {
         navigate('/admin', { replace: true });
       }
     }
@@ -80,7 +80,6 @@ const toolRoutes = [
   { path: 'color-palette', element: <ColorPaletteTool /> },
   { path: 'photo-editor', element: <PhotoEditorTool /> },
   { path: 'admin', element: <AdminDashboard /> },
-  { path: 'dashboard', element: <AdminDashboard /> },
 ];
 
 export default function App() {
@@ -102,11 +101,8 @@ export default function App() {
           ))}
         </Route>
 
-        {/* Direct admin fallback routes */}
+        {/* Direct admin route */}
         <Route path="/admin" element={<LangWrapper />}>
-          <Route index element={<AdminDashboard />} />
-        </Route>
-        <Route path="/dashboard" element={<LangWrapper />}>
           <Route index element={<AdminDashboard />} />
         </Route>
 
