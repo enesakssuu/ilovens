@@ -1,124 +1,124 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
-  Minimize2, Maximize2, Crop, RotateCcw, Code2, ShieldOff,
-  RefreshCw, ImageDown, Globe2, Stamp, Laugh, Eye,
-  Palette, Wand2, ArrowRight, Lock, Zap, Sparkles,
+  Sparkles, Lock, Zap, ArrowRight,
+  Minimize2, Maximize2, Crop, RotateCcw, RefreshCw, Stamp, Laugh, Eye,
+  Palette, Wand2, Code2, ShieldOff, ImageDown, Globe2
 } from 'lucide-react';
 
-interface ToolCard {
+interface ToolItem {
   id: string;
   icon: React.ReactNode;
   title: string;
   desc: string;
-  extra?: string[];   // extra feature bullets → makes card taller
   iconBg: string;
   badge?: string;
+  extra?: string[];
 }
 
-const useTools = (isEnglish: boolean): ToolCard[] => [
+const useTools = (isEnglish: boolean): ToolItem[] => [
   {
     id: 'compress',
     icon: <Minimize2 size={20} strokeWidth={1.5} />,
     title: isEnglish ? 'Compress Image' : 'Görsel Sıkıştır',
     desc: isEnglish
-      ? 'Reduce file size up to 90% while preserving visual quality. Perfect for web, email, and social media.'
-      : 'Görsel kalitesini koruyarak dosya boyutunu %90\'a kadar küçült. Web, e-posta ve sosyal medya için ideal.',
+      ? 'Reduce file size by up to 90% while keeping visual quality sharp. Web & e-mail ready.'
+      : 'Görsel kalitesini koruyarak dosya boyutunu %90\'a kadar küçült. Web ve e-posta için ideal.',
+    iconBg: 'bg-blue-600',
     extra: isEnglish
-      ? ['Supports JPG, PNG, WebP', 'Adjustable quality slider', 'Instant size preview']
+      ? ['JPG, PNG, WebP supported', 'Adjustable quality slider', 'Instant size preview']
       : ['JPG, PNG, WebP destekler', 'Ayarlanabilir kalite kaydırıcı', 'Anlık boyut önizleme'],
-    iconBg: 'bg-blue-500',
-    badge: undefined,
-  },
-  {
-    id: 'resize',
-    icon: <Maximize2 size={20} strokeWidth={1.5} />,
-    title: isEnglish ? 'Resize Image' : 'Yeniden Boyutlandır',
-    desc: isEnglish
-      ? 'Set exact pixel dimensions with a smart aspect-ratio lock.'
-      : 'Piksel bazında tam boyut kontrolü ve akıllı oran kilitleme.',
-    extra: isEnglish
-      ? ['Lock aspect ratio', 'Custom width & height', 'High-quality resampling']
-      : ['Oran kilitleme', 'Özel genişlik & yükseklik', 'Yüksek kalite örnekleme'],
-    iconBg: 'bg-violet-500',
-  },
-  {
-    id: 'color-palette',
-    icon: <Palette size={20} strokeWidth={1.5} />,
-    title: isEnglish ? 'Color Palette' : 'Renk Paleti Çıkarıcı',
-    desc: isEnglish
-      ? 'Extract the dominant HEX & RGB colors from any image. Click to copy.'
-      : 'Görseldeki baskın HEX & RGB renk kodlarını çıkar. Tıkla, kopyala.',
-    iconBg: 'bg-pink-500',
-    badge: isEnglish ? 'New' : 'Yeni',
   },
   {
     id: 'convert',
     icon: <RefreshCw size={20} strokeWidth={1.5} />,
     title: isEnglish ? 'Format Convert' : 'Format Dönüştür',
     desc: isEnglish
-      ? 'Instantly convert between JPG, PNG, and WebP. Lossless PNG and transparent WebP supported.'
+      ? 'Convert between JPG, PNG and WebP in one click. Lossless PNG and transparent WebP supported.'
       : 'JPG, PNG ve WebP arasında anında dönüştür. Kayıpsız PNG ve şeffaf WebP destekli.',
-    iconBg: 'bg-cyan-500',
-  },
-  {
-    id: 'crop',
-    icon: <Crop size={20} strokeWidth={1.5} />,
-    title: isEnglish ? 'Crop Image' : 'Görsel Kırp',
-    desc: isEnglish ? 'Select any crop region with precision sliders.' : 'Hassas kaydırıcılarla istediğin alanı seç ve kırp.',
-    iconBg: 'bg-amber-500',
-  },
-  {
-    id: 'rotate',
-    icon: <RotateCcw size={20} strokeWidth={1.5} />,
-    title: isEnglish ? 'Rotate & Flip' : 'Döndür & Çevir',
-    desc: isEnglish
-      ? 'Rotate 90° clockwise or counter-clockwise. Flip horizontally or vertically.'
-      : 'Saat yönünde veya tersine 90° döndür. Yatay veya dikey çevir.',
-    iconBg: 'bg-orange-500',
-  },
-  {
-    id: 'photo-editor',
-    icon: <Wand2 size={20} strokeWidth={1.5} />,
-    title: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü',
-    desc: isEnglish
-      ? 'Adjust brightness, contrast, saturation, blur, grayscale and sepia with a live preview panel.'
-      : 'Parlaklık, kontrast, doygunluk, bulanıklık, gri ton ve sepya — canlı önizleme ile.',
-    extra: isEnglish
-      ? ['6 adjustment sliders', 'Live before/after preview', 'Canvas-quality output']
-      : ['6 ayar kaydırıcısı', 'Canlı önizleme paneli', 'Canvas kalitesinde çıktı'],
-    iconBg: 'bg-fuchsia-600',
+    iconBg: 'bg-cyan-600',
   },
   {
     id: 'watermark',
     icon: <Stamp size={20} strokeWidth={1.5} />,
     title: isEnglish ? 'Add Watermark' : 'Filigran Ekle',
     desc: isEnglish
-      ? 'Brand your images with custom text. Choose from 5 placement positions.'
+      ? 'Add custom text watermark to protect your photos. 5 position options.'
       : 'Görsellerinize özel metin filigranı ekle. 5 konum seçeneği.',
-    iconBg: 'bg-indigo-500',
+    iconBg: 'bg-indigo-600',
+  },
+  {
+    id: 'svg-optimize',
+    icon: <Code2 size={20} strokeWidth={1.5} />,
+    title: 'SVG Optimizer',
+    desc: isEnglish
+      ? 'Clean SVG files, remove editor garbage & decrease file sizes up to 70%.'
+      : 'Gereksiz metadata, editör yorumları ve Inkscape kalıntılarını temizleyerek dosya boyutunu küçült.',
+    iconBg: 'bg-lime-600',
+    badge: isEnglish ? 'New' : 'Yeni',
+  },
+  {
+    id: 'resize',
+    icon: <Maximize2 size={20} strokeWidth={1.5} />,
+    title: isEnglish ? 'Resize Image' : 'Yeniden Boyutlandır',
+    desc: isEnglish
+      ? 'Exact pixel-level dimension control with smart aspect ratio lock.'
+      : 'Piksel bazında tam boyut kontrolü ve akıllı oran kilitleme.',
+    iconBg: 'bg-violet-600',
+    extra: isEnglish
+      ? ['Aspect ratio lock', 'Custom width & height', 'High quality sampling']
+      : ['Oran kilitleme', 'Özel genişlik & yükseklik', 'Yüksek kalite örnekleme'],
+  },
+  {
+    id: 'crop',
+    icon: <Crop size={20} strokeWidth={1.5} />,
+    title: isEnglish ? 'Crop Image' : 'Görsel Kırp',
+    desc: isEnglish
+      ? 'Select any region with precise sliders and crop instantly.'
+      : 'Hassas kaydırıcılarla istediğin alanı seç ve kırp.',
+    iconBg: 'bg-amber-600',
   },
   {
     id: 'exif-remover',
     icon: <ShieldOff size={20} strokeWidth={1.5} />,
     title: 'EXIF Remover',
     desc: isEnglish
-      ? 'Strip hidden metadata — GPS location, camera model, author, timestamps — for complete privacy.'
+      ? 'Strip hidden privacy metadata including GPS location, camera model, author and timestamps.'
       : 'GPS konumu, kamera modeli, yazar ve zaman damgaları dahil tüm gizli meta verileri sil.',
-    extra: isEnglish
-      ? ['Removes GPS & location data', 'Strips device fingerprinting', '100% privacy guaranteed']
-      : ['GPS ve konum verisi silinir', 'Cihaz parmak izi temizlenir', '%100 gizlilik'],
     iconBg: 'bg-emerald-600',
     badge: isEnglish ? 'New' : 'Yeni',
+    extra: isEnglish
+      ? ['Strips GPS & location data', 'Cleans device fingerprint', '100% private & client-side']
+      : ['GPS ve konum verisi silinir', 'Cihaz parmak izi temizlenir', '%100 gizlilik'],
+  },
+  {
+    id: 'heic-to-jpg',
+    icon: <ImageDown size={20} strokeWidth={1.5} />,
+    title: 'HEIC → JPG',
+    desc: isEnglish
+      ? 'Convert Apple iPhone HEIC photos to universal JPG format directly in browser.'
+      : 'Apple iPhone HEIC fotoğraflarını evrensel JPG formatına dönüştür.',
+    iconBg: 'bg-slate-700',
+    badge: isEnglish ? 'New' : 'Yeni',
+  },
+  {
+    id: 'rotate',
+    icon: <RotateCcw size={20} strokeWidth={1.5} />,
+    title: isEnglish ? 'Rotate & Flip' : 'Döndür & Çevir',
+    desc: isEnglish
+      ? 'Rotate clockwise or counter-clockwise by 90°. Flip horizontally or vertically.'
+      : 'Saat yönünde veya tersine 90° döndür. Yatay veya dikey çevir.',
+    iconBg: 'bg-orange-600',
   },
   {
     id: 'meme',
     icon: <Laugh size={20} strokeWidth={1.5} />,
     title: 'Meme Generator',
     desc: isEnglish
-      ? 'Add Impact-style top and bottom captions to any image.'
-      : 'Herhangi bir görsele Impact stili üst ve alt başlık ekle.',
+      ? 'Add top & bottom text overlay in classic Impact font.'
+      : 'Klasik Impact yazı tipiyle üst ve alt metin ekle.',
     iconBg: 'bg-yellow-500',
   },
   {
@@ -126,28 +126,28 @@ const useTools = (isEnglish: boolean): ToolCard[] => [
     icon: <Eye size={20} strokeWidth={1.5} />,
     title: isEnglish ? 'Blur / Censor' : 'Yüz Sansürle',
     desc: isEnglish
-      ? 'Pixelate faces, license plates, or any sensitive region. Add multiple blur zones.'
-      : 'Yüz, plaka veya hassas bölgeleri pikselleştir. Çoklu bulanık alan desteği.',
+      ? 'Blur or pixelate sensitive regions before sharing.'
+      : 'Paylaşmadan önce hassas alanları bulanıklaştır veya pikselle.',
     iconBg: 'bg-red-500',
   },
   {
-    id: 'svg-optimize',
-    icon: <Code2 size={20} strokeWidth={1.5} />,
-    title: 'SVG Optimizer',
+    id: 'color-palette',
+    icon: <Palette size={20} strokeWidth={1.5} />,
+    title: isEnglish ? 'Color Palette' : 'Renk Paleti',
     desc: isEnglish
-      ? 'Remove unnecessary metadata, editor comments, and Inkscape/Illustrator artifacts to shrink file size.'
-      : 'Gereksiz metadata, editör yorumları ve Inkscape kalıntılarını temizleyerek dosya boyutunu küçült.',
-    iconBg: 'bg-lime-600',
+      ? 'Extract dominant color palette and HEX/RGB codes from any image.'
+      : 'Herhangi bir görselden baskın renk paletini ve HEX/RGB kodlarını çıkar.',
+    iconBg: 'bg-pink-600',
     badge: isEnglish ? 'New' : 'Yeni',
   },
   {
-    id: 'heic-to-jpg',
-    icon: <ImageDown size={20} strokeWidth={1.5} />,
-    title: 'HEIC → JPG',
+    id: 'photo-editor',
+    icon: <Wand2 size={20} strokeWidth={1.5} />,
+    title: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü',
     desc: isEnglish
-      ? 'Guide for converting Apple iPhone HEIC photos to universal JPG format.'
-      : 'Apple iPhone HEIC fotoğraflarını evrensel JPG formatına dönüştürme rehberi.',
-    iconBg: 'bg-slate-600',
+      ? 'Adjust brightness, contrast, saturation, grayscale, blur & sepia with live preview.'
+      : 'Parlaklık, kontrast, doygunluk ve filtreleri canlı önizlemeyle ayarla.',
+    iconBg: 'bg-fuchsia-600',
     badge: isEnglish ? 'New' : 'Yeni',
   },
   {
@@ -155,25 +155,29 @@ const useTools = (isEnglish: boolean): ToolCard[] => [
     icon: <Globe2 size={20} strokeWidth={1.5} />,
     title: isEnglish ? 'HTML to Image' : 'HTML → Görsel',
     desc: isEnglish
-      ? 'Capture a screenshot of any webpage by entering its URL.'
-      : 'Herhangi bir web sayfasının URL\'sini girerek ekran görüntüsü al.',
-    iconBg: 'bg-teal-500',
+      ? 'Render custom HTML/CSS code or template cards into crisp PNG images.'
+      : 'Özel HTML/CSS kodlarını veya şablon kartlarını yüksek kaliteli PNG görsele dönüştür.',
+    iconBg: 'bg-teal-600',
   },
 ];
 
-// Per-card stagger animation with whileInView
-const cardVariants = {
-  hidden: { opacity: 0, y: 28 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      delay: (i % 4) * 0.07, // column-based stagger
-      ease: [0.22, 1, 0.36, 1] as const,
-    },
-  }),
-};
+// Organic non-uniform shapes & playful initial tilt rotations
+const organicCardStyles = [
+  { borderRadius: '2.2rem 1.3rem 2rem 1.4rem', baseRotate: -1.8 },
+  { borderRadius: '1.4rem 2.2rem 1.3rem 2rem', baseRotate: 1.6 },
+  { borderRadius: '2rem 1.5rem 2.3rem 1.3rem', baseRotate: -1.2 },
+  { borderRadius: '1.3rem 2rem 1.4rem 2.2rem', baseRotate: 2.1 },
+  { borderRadius: '2rem 1.4rem 2.2rem 1.25rem', baseRotate: -1.5 },
+  { borderRadius: '1.25rem 2.2rem 1.5rem 2.1rem', baseRotate: 1.8 },
+  { borderRadius: '2.1rem 1.3rem 2rem 1.5rem', baseRotate: -2.0 },
+  { borderRadius: '1.5rem 2.1rem 1.25rem 2.2rem', baseRotate: 1.4 },
+  { borderRadius: '2.2rem 1.4rem 2.1rem 1.3rem', baseRotate: -1.6 },
+  { borderRadius: '1.3rem 2rem 1.5rem 2.1rem', baseRotate: 1.7 },
+  { borderRadius: '2.1rem 1.5rem 2.2rem 1.25rem', baseRotate: -1.3 },
+  { borderRadius: '1.25rem 2.1rem 1.3rem 2rem', baseRotate: 2.2 },
+  { borderRadius: '2rem 1.3rem 2.1rem 1.4rem', baseRotate: -1.1 },
+  { borderRadius: '1.4rem 2.2rem 1.25rem 2.1rem', baseRotate: 1.9 },
+];
 
 export default function Home() {
   const { i18n } = useTranslation();
@@ -181,16 +185,19 @@ export default function Home() {
   const basePath = isEnglish ? '/en' : '';
   const tools = useTools(isEnglish);
 
+  // Track hovered card for proximity repulsion physics
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24">
 
       {/* ── HERO ────────────────────────────────────────────── */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-14">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 mb-5 px-3 py-1 rounded-full text-[12px] font-semibold text-[#6E6E73]"
+          className="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold text-[#6E6E73]"
           style={{
             background: 'rgba(255,255,255,0.85)',
             border: '1px solid rgba(0,0,0,0.07)',
@@ -198,7 +205,7 @@ export default function Home() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
           }}
         >
-          <Sparkles size={11} className="text-brand-purple" strokeWidth={2} />
+          <Sparkles size={12} className="text-brand-purple" strokeWidth={2} />
           {isEnglish ? '14 tools · 100% free · No server uploads' : '14 araç · %100 ücretsiz · Sunucuya gönderilmez'}
         </motion.div>
 
@@ -255,70 +262,135 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* ── MASONRY GRID ────────────────────────────────────── */}
-      <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
-        {tools.map((tool, i) => (
-          <motion.div
-            key={tool.id}
-            custom={i}
-            variants={cardVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-40px' }}
-            className="break-inside-avoid mb-4"
-          >
-            <Link to={`${basePath}/${tool.id}`} className="block group">
-              <div
-                className="glass-card liquid-card p-5 relative"
-                style={{ borderRadius: '1.25rem' }}
-              >
-                {/* Badge */}
-                {tool.badge && (
-                  <span className="absolute top-4 right-4 text-[9px] font-bold text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-brand-blue via-brand-pink to-brand-purple shadow-sm z-10">
-                    {tool.badge}
-                  </span>
-                )}
+      {/* ── ORGANIC SCATTER GRID WITH PROXIMITY REPULSION HOVER ────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+        {tools.map((tool, i) => {
+          const orgStyle = organicCardStyles[i % organicCardStyles.length];
 
-                {/* Header row */}
-                <div className="flex items-start gap-3 mb-3 relative z-10">
-                  <div
-                    className={`liquid-icon w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg}`}
-                    style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.15)' }}
-                  >
-                    {tool.icon}
+          // Determine card animation parameters based on proximity to hovered card
+          let scale = 1;
+          let rotate = orgStyle.baseRotate;
+          let x = 0;
+          let y = 0;
+          let zIndex = 1;
+          let opacity = 1;
+          let shadow = '0 4px 20px rgba(0, 0, 0, 0.04)';
+
+          if (hoveredIdx === i) {
+            // Hovered Card Expands & Rotates straight
+            scale = 1.1;
+            rotate = 0;
+            zIndex = 40;
+            shadow = '0 25px 60px -10px rgba(50, 54, 66, 0.22), 0 15px 30px -8px rgba(184, 150, 223, 0.35)';
+          } else if (hoveredIdx !== null) {
+            // Calculate relative grid position to push surrounding cards away!
+            const cols = 4; // grid columns
+            const hCol = hoveredIdx % cols;
+            const hRow = Math.floor(hoveredIdx / cols);
+            const iCol = i % cols;
+            const iRow = Math.floor(i / cols);
+
+            const dx = iCol - hCol;
+            const dy = iRow - hRow;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist <= 2.2) {
+              // Nearby surrounding cards part away dynamically
+              const pushMag = 24 / Math.max(1, dist);
+              x = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -12 : 12);
+              y = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -10 : 10);
+              scale = 0.95;
+              opacity = 0.8;
+            } else {
+              scale = 0.98;
+              opacity = 0.9;
+            }
+          }
+
+          return (
+            <motion.div
+              key={tool.id}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{
+                scale,
+                rotate,
+                x,
+                y,
+                opacity,
+                zIndex,
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: 260,
+                damping: 24,
+                mass: 0.8,
+              }}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              className="relative"
+            >
+              <Link to={`${basePath}/${tool.id}`} className="block group">
+                <div
+                  className="glass-card p-5.5 relative transition-all duration-300"
+                  style={{
+                    borderRadius: orgStyle.borderRadius,
+                    boxShadow: shadow,
+                    borderColor: hoveredIdx === i ? 'rgba(184, 150, 223, 0.45)' : 'rgba(0, 0, 0, 0.07)',
+                    backgroundColor: hoveredIdx === i ? '#ffffff' : undefined,
+                  }}
+                >
+                  {/* Badge */}
+                  {tool.badge && (
+                    <span className="absolute top-4 right-4 text-[9.5px] font-bold text-white px-2.5 py-0.5 rounded-full bg-gradient-to-r from-brand-blue via-brand-pink to-brand-purple shadow-sm z-10">
+                      {tool.badge}
+                    </span>
+                  )}
+
+                  {/* Header row */}
+                  <div className="flex items-start gap-3 mb-3 relative z-10">
+                    <div
+                      className={`w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg} transition-transform duration-300 ${
+                        hoveredIdx === i ? 'scale-110 rotate-[-4deg]' : ''
+                      }`}
+                      style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.15)' }}
+                    >
+                      {tool.icon}
+                    </div>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <h3 className="text-[14px] font-bold tracking-tight text-brand-text leading-snug flex items-center gap-1">
+                        {tool.title}
+                        <ArrowRight
+                          size={12}
+                          strokeWidth={2.5}
+                          className={`transition-all duration-200 text-brand-purple flex-shrink-0 ${
+                            hoveredIdx === i ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1.5'
+                          }`}
+                        />
+                      </h3>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <h3 className="text-[13.5px] font-semibold tracking-tight text-brand-text leading-snug flex items-center gap-1">
-                      {tool.title}
-                      <ArrowRight
-                        size={11}
-                        strokeWidth={2.5}
-                        className="opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-200 text-brand-purple flex-shrink-0"
-                      />
-                    </h3>
-                  </div>
+
+                  {/* Description */}
+                  <p className="text-[12.5px] text-[#6E6E73] leading-relaxed mb-0 relative z-10">
+                    {tool.desc}
+                  </p>
+
+                  {/* Feature bullets */}
+                  {tool.extra && (
+                    <ul className="mt-3.5 space-y-1.5 border-t border-black/[0.06] pt-3 relative z-10">
+                      {tool.extra.map((f) => (
+                        <li key={f} className="flex items-center gap-2 text-[11.5px] text-[#6E6E73]">
+                          <div className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-
-                {/* Description */}
-                <p className="text-[12.5px] text-[#6E6E73] leading-relaxed mb-0 relative z-10">
-                  {tool.desc}
-                </p>
-
-                {/* Feature bullets (makes card taller = masonry variation) */}
-                {tool.extra && (
-                  <ul className="mt-3 space-y-1.5 border-t border-black/[0.05] pt-3 relative z-10">
-                    {tool.extra.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-[11.5px] text-[#6E6E73]">
-                        <div className="w-1 h-1 rounded-full bg-brand-purple flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </Link>
-          </motion.div>
-        ))}
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
