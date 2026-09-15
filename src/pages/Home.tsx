@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -161,22 +161,22 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
   },
 ];
 
-// Distinct, highly organic shapes & playful scatter angles / offsets
+// Desktop organic shapes & scatter props (kept strictly inside canvas margins)
 const organicScatterProps = [
-  { borderRadius: '3rem 1.2rem 2.4rem 1.5rem', baseRotate: -5.5, offsetY: -12, offsetX: -10 },
-  { borderRadius: '1.4rem 3.2rem 1.6rem 2.8rem', baseRotate: 4.5, offsetY: 24, offsetX: 8 },
-  { borderRadius: '2.8rem 1.6rem 3.2rem 1.3rem', baseRotate: -3.8, offsetY: 6, offsetX: -6 },
-  { borderRadius: '1.5rem 2.8rem 1.3rem 3.4rem', baseRotate: 6.2, offsetY: 32, offsetX: 12 },
-  { borderRadius: '3.2rem 1.4rem 2.6rem 1.8rem', baseRotate: -4.8, offsetY: -8, offsetX: -14 },
-  { borderRadius: '1.6rem 3.0rem 1.8rem 2.6rem', baseRotate: 3.8, offsetY: 18, offsetX: 6 },
-  { borderRadius: '2.9rem 1.8rem 3.4rem 1.4rem', baseRotate: -6.0, offsetY: 2, offsetX: -8 },
-  { borderRadius: '1.8rem 2.9rem 1.4rem 3.2rem', baseRotate: 5.2, offsetY: 28, offsetX: 10 },
-  { borderRadius: '3.4rem 1.5rem 2.8rem 1.6rem', baseRotate: -4.2, offsetY: 12, offsetX: -12 },
-  { borderRadius: '1.5rem 3.3rem 1.8rem 2.9rem', baseRotate: 5.8, offsetY: 36, offsetX: 14 },
-  { borderRadius: '2.7rem 1.8rem 3.1rem 1.3rem', baseRotate: -4.5, offsetY: 4, offsetX: -6 },
-  { borderRadius: '1.8rem 3.1rem 1.4rem 3.0rem', baseRotate: 3.5, offsetY: 22, offsetX: 8 },
-  { borderRadius: '3.1rem 1.4rem 2.7rem 1.9rem', baseRotate: -3.8, offsetY: 8, offsetX: -10 },
-  { borderRadius: '1.6rem 3.4rem 1.9rem 2.8rem', baseRotate: 6.0, offsetY: 30, offsetX: 12 },
+  { borderRadius: '2.4rem 1.2rem 2.2rem 1.4rem', baseRotate: -4.0, offsetY: 0, offsetX: 0 },
+  { borderRadius: '1.4rem 2.8rem 1.5rem 2.4rem', baseRotate: 3.5, offsetY: 16, offsetX: 0 },
+  { borderRadius: '2.5rem 1.4rem 2.4rem 1.3rem', baseRotate: -3.0, offsetY: 4, offsetX: 0 },
+  { borderRadius: '1.4rem 2.6rem 1.3rem 2.8rem', baseRotate: 4.5, offsetY: 24, offsetX: 0 },
+  { borderRadius: '2.8rem 1.3rem 2.4rem 1.5rem', baseRotate: -3.8, offsetY: -4, offsetX: 0 },
+  { borderRadius: '1.5rem 2.6rem 1.6rem 2.4rem', baseRotate: 3.0, offsetY: 14, offsetX: 0 },
+  { borderRadius: '2.6rem 1.5rem 2.8rem 1.3rem', baseRotate: -4.5, offsetY: 2, offsetX: 0 },
+  { borderRadius: '1.5rem 2.6rem 1.3rem 2.8rem', baseRotate: 4.0, offsetY: 20, offsetX: 0 },
+  { borderRadius: '2.8rem 1.4rem 2.5rem 1.5rem', baseRotate: -3.5, offsetY: 8, offsetX: 0 },
+  { borderRadius: '1.4rem 2.8rem 1.5rem 2.6rem', baseRotate: 4.2, offsetY: 26, offsetX: 0 },
+  { borderRadius: '2.5rem 1.5rem 2.6rem 1.3rem', baseRotate: -3.2, offsetY: 4, offsetX: 0 },
+  { borderRadius: '1.5rem 2.7rem 1.3rem 2.5rem', baseRotate: 3.0, offsetY: 18, offsetX: 0 },
+  { borderRadius: '2.6rem 1.3rem 2.5rem 1.5rem', baseRotate: -3.0, offsetY: 6, offsetX: 0 },
+  { borderRadius: '1.4rem 2.8rem 1.6rem 2.5rem', baseRotate: 4.5, offsetY: 22, offsetX: 0 },
 ];
 
 export default function Home() {
@@ -185,14 +185,23 @@ export default function Home() {
   const basePath = isEnglish ? '/en' : '';
   const tools = useTools(isEnglish);
 
-  // Track hovered card for massive physical repulsion physics
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
-    <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-36 overflow-hidden">
+    <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-8 lg:px-12 pt-10 pb-36">
 
       {/* ── HERO HEADER ────────────────────────────────────── */}
-      <div className="text-center mb-20 max-w-3xl mx-auto">
+      <div className="text-center mb-16 max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -213,7 +222,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.06 }}
-          className="text-[44px] sm:text-[64px] font-black tracking-[-0.04em] leading-[1.08] text-brand-text mb-4"
+          className="text-[42px] sm:text-[64px] font-black tracking-[-0.04em] leading-[1.08] text-brand-text mb-4"
         >
           {isEnglish ? (
             <>
@@ -262,54 +271,62 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* ── SCATTER CANVAS GRID WITH DRAMATIC SURROUNDING REPULSION PHYSICS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7 sm:gap-10 items-start">
+      {/* ── CANVAS GRID (FULL WIDTH, CLEAN MOBILE SINGLE-COLUMN, DESKTOP SURROUNDING REPULSION) ──────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
         {tools.map((tool, i) => {
           const scatProps = organicScatterProps[i % organicScatterProps.length];
 
-          // Base initial position including organic offsets
+          // MOBILE LAYOUT: Clean, aligned, 0 rotation, 0 displacement!
+          // DESKTOP LAYOUT: Organic scatter angles & dynamic repulsion push!
           let scale = 1;
-          let rotate = scatProps.baseRotate;
-          let x = scatProps.offsetX;
-          let y = scatProps.offsetY;
+          let rotate = isMobile ? 0 : scatProps.baseRotate;
+          let x = 0;
+          let y = isMobile ? 0 : scatProps.offsetY;
           let zIndex = 1;
           let opacity = 1;
+          const borderRadius = isMobile ? '1.25rem' : scatProps.borderRadius;
 
-          if (hoveredIdx === i) {
-            // Hovered Card grows big, stands straight and floats high on top
-            scale = 1.25;
-            rotate = 0;
-            x = 0;
-            y = 0;
-            zIndex = 100;
-            opacity = 1;
-          } else if (hoveredIdx !== null) {
-            // Compute surrounding displacement vector dynamically
-            const cols = 4;
-            const hCol = hoveredIdx % cols;
-            const hRow = Math.floor(hoveredIdx / cols);
-            const iCol = i % cols;
-            const iRow = Math.floor(i / cols);
+          if (!isMobile) {
+            if (hoveredIdx === i) {
+              scale = 1.18;
+              rotate = 0;
+              x = 0;
+              y = 0;
+              zIndex = 100;
+              opacity = 1;
+            } else if (hoveredIdx !== null) {
+              const cols = 4;
+              const hCol = hoveredIdx % cols;
+              const hRow = Math.floor(hoveredIdx / cols);
+              const iCol = i % cols;
+              const iRow = Math.floor(i / cols);
 
-            const dx = iCol - hCol;
-            const dy = iRow - hRow;
-            const dist = Math.hypot(dx, dy);
+              const dx = iCol - hCol;
+              const dy = iRow - hRow;
+              const dist = Math.hypot(dx, dy);
 
-            // MASSIVE 75px repulsion push for surrounding cards!
-            const pushMag = Math.min(85, 75 / Math.max(1, dist));
-            const pushX = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -35 : 35);
-            const pushY = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -30 : 30);
+              // 60px Repulsion Push on desktop
+              const pushMag = Math.min(70, 60 / Math.max(1, dist));
+              const pushX = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -24 : 24);
+              const pushY = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -20 : 20);
 
-            x = scatProps.offsetX + pushX;
-            y = scatProps.offsetY + pushY;
-            scale = dist <= 2 ? 0.90 : 0.95;
-            opacity = dist <= 2 ? 0.70 : 0.85;
+              x = pushX;
+              y = scatProps.offsetY + pushY;
+              scale = dist <= 2 ? 0.92 : 0.96;
+              opacity = dist <= 2 ? 0.75 : 0.88;
+            }
+          } else {
+            // Mobile hover subtle scale
+            if (hoveredIdx === i) {
+              scale = 1.02;
+              zIndex = 10;
+            }
           }
 
           return (
             <motion.div
               key={tool.id}
-              initial={{ opacity: 0, y: 35 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{
                 scale,
                 rotate,
@@ -320,9 +337,9 @@ export default function Home() {
               }}
               transition={{
                 type: 'spring',
-                stiffness: 260,
-                damping: 20,
-                mass: 0.75,
+                stiffness: 250,
+                damping: 22,
+                mass: 0.8,
               }}
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
@@ -332,13 +349,13 @@ export default function Home() {
                 <div
                   className="p-6 relative transition-colors duration-200"
                   style={{
-                    borderRadius: scatProps.borderRadius,
+                    borderRadius,
                     backgroundColor: '#ffffff',
-                    border: hoveredIdx === i ? '1.5px solid rgba(184, 150, 223, 0.7)' : '1px solid rgba(0, 0, 0, 0.09)',
+                    border: hoveredIdx === i ? '1.5px solid rgba(184, 150, 223, 0.65)' : '1px solid rgba(0, 0, 0, 0.08)',
                     boxShadow:
                       hoveredIdx === i
-                        ? '0 35px 90px -15px rgba(50, 54, 66, 0.28), 0 15px 40px -8px rgba(184, 150, 223, 0.4)'
-                        : '0 4px 24px rgba(0, 0, 0, 0.05)',
+                        ? '0 30px 80px -15px rgba(50, 54, 66, 0.25), 0 15px 35px -8px rgba(184, 150, 223, 0.35)'
+                        : '0 4px 20px rgba(0, 0, 0, 0.04)',
                   }}
                 >
                   {/* Badge */}
