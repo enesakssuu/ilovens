@@ -15,7 +15,6 @@ interface ToolItem {
   desc: string;
   iconBg: string;
   badge?: string;
-  extra?: string[];
 }
 
 const useTools = (isEnglish: boolean): ToolItem[] => [
@@ -27,9 +26,6 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
       ? 'Reduce file size by up to 90% while keeping visual quality sharp. Web & e-mail ready.'
       : 'Görsel kalitesini koruyarak dosya boyutunu %90\'a kadar küçült. Web ve e-posta için ideal.',
     iconBg: 'bg-blue-600',
-    extra: isEnglish
-      ? ['JPG, PNG, WebP supported', 'Adjustable quality slider', 'Instant size preview']
-      : ['JPG, PNG, WebP destekler', 'Ayarlanabilir kalite kaydırıcı', 'Anlık boyut önizleme'],
   },
   {
     id: 'convert',
@@ -67,9 +63,6 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
       ? 'Exact pixel-level dimension control with smart aspect ratio lock.'
       : 'Piksel bazında tam boyut kontrolü ve akıllı oran kilitleme.',
     iconBg: 'bg-violet-600',
-    extra: isEnglish
-      ? ['Aspect ratio lock', 'Custom width & height', 'High quality sampling']
-      : ['Oran kilitleme', 'Özel genişlik & yükseklik', 'Yüksek kalite örnekleme'],
   },
   {
     id: 'crop',
@@ -89,9 +82,6 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
       : 'GPS konumu, kamera modeli, yazar ve zaman damgaları dahil tüm gizli meta verileri sil.',
     iconBg: 'bg-emerald-600',
     badge: isEnglish ? 'New' : 'Yeni',
-    extra: isEnglish
-      ? ['Strips GPS & location data', 'Cleans device fingerprint', '100% private & client-side']
-      : ['GPS ve konum verisi silinir', 'Cihaz parmak izi temizlenir', '%100 gizlilik'],
   },
   {
     id: 'heic-to-jpg',
@@ -393,18 +383,6 @@ export default function Home() {
                   <p className="text-[13px] text-[#6E6E73] leading-relaxed mb-0 relative z-10">
                     {tool.desc}
                   </p>
-
-                  {/* Feature bullets */}
-                  {tool.extra && (
-                    <ul className="mt-4 space-y-1.5 border-t border-black/[0.07] pt-3.5 relative z-10">
-                      {tool.extra.map((f) => (
-                        <li key={f} className="flex items-center gap-2 text-[11.5px] text-[#6E6E73]">
-                          <div className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
                 </div>
               </Link>
             </motion.div>
