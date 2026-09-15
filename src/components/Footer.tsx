@@ -36,6 +36,7 @@ export default function Footer() {
         { label: isEnglish ? 'Blur Face' : 'Yüz Sansürle', path: `${basePath}/blur-face` },
         { label: isEnglish ? 'Color Palette' : 'Renk Paleti', path: `${basePath}/color-palette` },
         { label: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü', path: `${basePath}/photo-editor` },
+        { label: isEnglish ? 'Admin Dashboard' : 'Admin Paneli', path: `${basePath}/admin` },
       ],
     },
   ];

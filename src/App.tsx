@@ -20,6 +20,8 @@ import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
 
+import AdminDashboard from './pages/AdminDashboard';
+
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -68,6 +70,8 @@ const toolRoutes = [
   { path: 'blur-face', element: <BlurFaceTool /> },
   { path: 'color-palette', element: <ColorPaletteTool /> },
   { path: 'photo-editor', element: <PhotoEditorTool /> },
+  { path: 'admin', element: <AdminDashboard /> },
+  { path: 'dashboard', element: <AdminDashboard /> },
 ];
 
 export default function App() {
