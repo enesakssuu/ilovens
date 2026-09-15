@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 const sampleTemplates = [
   {
@@ -54,6 +55,10 @@ export default function HtmlToImageTool() {
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
 
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'html-to-image', toolName: 'HTML to Image' });
+  }, []);
+
   const [htmlCode, setHtmlCode] = useState(sampleTemplates[0].html);
   const [bgColor, setBgColor] = useState('transparent');
   const [padding, setPadding] = useState(24);
@@ -76,8 +81,15 @@ export default function HtmlToImageTool() {
 
       const dataUrl = canvas.toDataURL('image/png');
       setResultUrl(dataUrl);
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'html-to-image',
+        toolName: 'HTML to Image',
+        fileSizeBefore: 100000,
+        fileSizeAfter: dataUrl.length * 0.75,
+      });
     } catch (err) {
-      console.error('HTML to Image rendering failed:', err);
+      console.error('Render failed:', err);
     } finally {
       setRendering(false);
     }
@@ -85,7 +97,14 @@ export default function HtmlToImageTool() {
 
   const handleDownload = () => {
     if (!resultUrl) return;
-    downloadFile(resultUrl, 'html_render.png');
+    downloadFile(resultUrl, `ilovens_rendered_${Date.now()}.png`);
+    trackEvent({
+      type: 'download',
+      toolId: 'html-to-image',
+      toolName: 'HTML to Image',
+      fileSizeBefore: 100000,
+      fileSizeAfter: resultUrl.length * 0.75,
+    });
   };
 
   return (

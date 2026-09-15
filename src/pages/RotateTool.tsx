@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Download, CheckCircle2, FlipHorizontal, FlipVertical } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 type Mode = 'cw' | 'ccw' | 'flipH' | 'flipV';
 
@@ -12,6 +13,10 @@ export default function RotateTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'rotate', toolName: 'Döndür & Çevir' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -57,12 +62,26 @@ export default function RotateTool() {
       const dataUrl = canvas.toDataURL(mime, 0.93);
       const base = file.name.replace(/\.[^.]+$/, '');
       setResult({ url: dataUrl, name: `${base}_rotated.${ext}` });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'rotate',
+        toolName: 'Döndür & Çevir',
+        fileSizeBefore: file.size,
+        fileSizeAfter: file.size,
+      });
     } finally { setProcessing(false); }
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.url, result.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'rotate',
+      toolName: 'Döndür & Çevir',
+      fileSizeBefore: file.size,
+      fileSizeAfter: file.size,
+    });
   };
 
   const modes = [

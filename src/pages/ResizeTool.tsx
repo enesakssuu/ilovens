@@ -1,15 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Download, Maximize2, CheckCircle2, Lock, Unlock } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { resizeImage, getImageDimensions, downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 export default function ResizeTool() {
   const { t, i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'resize', toolName: 'Yeniden Boyutlandır' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [width, setWidth] = useState<number>(800);
@@ -61,6 +66,13 @@ export default function ResizeTool() {
       const resized = await resizeImage(file, width, height);
       const url = URL.createObjectURL(resized);
       setResult({ file: resized, url });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'resize',
+        toolName: 'Yeniden Boyutlandır',
+        fileSizeBefore: file.size,
+        fileSizeAfter: resized.size,
+      });
     } catch {
       setError(isEnglish ? 'Processing failed.' : 'İşlem başarısız oldu.');
     } finally {
@@ -69,8 +81,15 @@ export default function ResizeTool() {
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.file, result.file.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'resize',
+      toolName: 'Yeniden Boyutlandır',
+      fileSizeBefore: file.size,
+      fileSizeAfter: result.file.size,
+    });
   };
 
   return (

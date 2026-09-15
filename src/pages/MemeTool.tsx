@@ -1,15 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Laugh, Download, CheckCircle2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 export default function MemeTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'meme', toolName: 'Meme Generator' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -59,12 +64,26 @@ export default function MemeTool() {
       const base = file.name.replace(/\.[^.]+$/, '');
       const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
       setResult({ url: dataUrl, name: `${base}_meme.jpg` });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'meme',
+        toolName: 'Meme Generator',
+        fileSizeBefore: file.size,
+        fileSizeAfter: file.size,
+      });
     } finally { setProcessing(false); }
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.url, result.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'meme',
+      toolName: 'Meme Generator',
+      fileSizeBefore: file.size,
+      fileSizeAfter: file.size,
+    });
   };
 
   return (

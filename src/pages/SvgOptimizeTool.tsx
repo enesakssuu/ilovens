@@ -1,23 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Code2, Download, CheckCircle2 } from 'lucide-react';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 function optimizeSvg(svgText: string): { result: string; originalSize: number; newSize: number } {
   const originalSize = new Blob([svgText]).size;
 
   let result = svgText;
-  // Remove XML declaration
   result = result.replace(/<\?xml[^?]*\?>\s*/g, '');
-  // Remove comments
   result = result.replace(/<!--[\s\S]*?-->/g, '');
-  // Remove metadata tags
   result = result.replace(/<metadata[\s\S]*?<\/metadata>/gi, '');
-  // Remove empty style attributes
   result = result.replace(/\s+style=""/g, '');
-  // Remove editor-specific attributes (Inkscape, Sodipodi, Adobe)
   result = result.replace(/\s+inkscape:[^=]+="[^"]*"/g, '');
   result = result.replace(/\s+sodipodi:[^=]+="[^"]*"/g, '');
   result = result.replace(/\s+dc:[^=]+="[^"]*"/g, '');
@@ -28,8 +24,6 @@ function optimizeSvg(svgText: string): { result: string; originalSize: number; n
   result = result.replace(/\s+xmlns:dc="[^"]*"/g, '');
   result = result.replace(/\s+xmlns:cc="[^"]*"/g, '');
   result = result.replace(/\s+xmlns:rdf="[^"]*"/g, '');
-  // Remove id attributes (optional but common)
-  // Collapse whitespace
   result = result.replace(/\s{2,}/g, ' ').replace(/>\s+</g, '><').trim();
 
   const newSize = new Blob([result]).size;
@@ -40,6 +34,10 @@ export default function SvgOptimizeTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'svg-optimize', toolName: 'SVG Optimizer' });
+  }, []);
 
   const [svgContent, setSvgContent] = useState('');
   const [result, setResult] = useState<{ result: string; originalSize: number; newSize: number } | null>(null);
@@ -59,12 +57,26 @@ export default function SvgOptimizeTool() {
     if (!svgContent.trim()) return;
     const res = optimizeSvg(svgContent);
     setResult(res);
+    trackEvent({
+      type: 'tool_use',
+      toolId: 'svg-optimize',
+      toolName: 'SVG Optimizer',
+      fileSizeBefore: res.originalSize,
+      fileSizeAfter: res.newSize,
+    });
   };
 
   const handleDownload = () => {
     if (!result) return;
     const blob = new Blob([result.result], { type: 'image/svg+xml' });
     downloadFile(blob, fileName);
+    trackEvent({
+      type: 'download',
+      toolId: 'svg-optimize',
+      toolName: 'SVG Optimizer',
+      fileSizeBefore: result.originalSize,
+      fileSizeAfter: result.newSize,
+    });
   };
 
   const savingsPct = result

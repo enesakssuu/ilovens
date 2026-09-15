@@ -1,15 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ShieldOff, Download, CheckCircle2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 export default function ExifRemoverTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'exif-remover', toolName: 'EXIF Remover' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -50,12 +55,26 @@ export default function ExifRemoverTool() {
         beforeKB: Math.round(file.size / 1024),
         afterKB: Math.round(base64Size / 1024),
       });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'exif-remover',
+        toolName: 'EXIF Remover',
+        fileSizeBefore: file.size,
+        fileSizeAfter: Math.round(base64Size),
+      });
     } finally { setProcessing(false); }
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.url, result.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'exif-remover',
+      toolName: 'EXIF Remover',
+      fileSizeBefore: file.size,
+      fileSizeAfter: Math.round(result.afterKB * 1024),
+    });
   };
 
   const exifFields = [

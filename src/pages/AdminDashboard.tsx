@@ -23,9 +23,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    refreshData();
     trackEvent({ type: 'pageview', toolName: 'Admin Dashboard' });
+  }, []);
 
+  useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       refreshData();

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Palette, Copy, Check } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
+import { trackEvent } from '../utils/analytics';
 
 interface ColorSwatch {
   hex: string;
@@ -54,6 +55,10 @@ export default function ColorPaletteTool() {
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
 
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'color-palette', toolName: 'Renk Paleti' });
+  }, []);
+
   const [file, setFile] = useState<File | null>(null);
   const [colors, setColors] = useState<ColorSwatch[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -81,9 +86,16 @@ export default function ColorPaletteTool() {
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const palette = extractColors(imageData, 8);
-      setColors(palette);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const extracted = extractColors(imgData, 8);
+      setColors(extracted);
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'color-palette',
+        toolName: 'Renk Paleti',
+        fileSizeBefore: f.size,
+        fileSizeAfter: f.size,
+      });
     } finally { setProcessing(false); }
   };
 

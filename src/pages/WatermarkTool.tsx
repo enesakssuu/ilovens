@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Download, Stamp, CheckCircle2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { watermarkImage, type WatermarkPosition, downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 const POSITIONS: { value: WatermarkPosition; labelKey: string; icon: string }[] = [
   { value: 'topLeft', labelKey: 'watermark.positions.topLeft', icon: '↖' },
@@ -18,6 +19,10 @@ export default function WatermarkTool() {
   const { t, i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'watermark', toolName: 'Filigran Ekle' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('iLoveNS');
@@ -44,6 +49,13 @@ export default function WatermarkTool() {
       const watermarked = await watermarkImage(file, text, position);
       const url = URL.createObjectURL(watermarked);
       setResult({ file: watermarked, url });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'watermark',
+        toolName: 'Filigran Ekle',
+        fileSizeBefore: file.size,
+        fileSizeAfter: watermarked.size,
+      });
     } catch (err) {
       setError(isEnglish ? 'Processing failed. Please try another image.' : 'İşlem başarısız. Lütfen başka bir görsel deneyin.');
     } finally {
@@ -52,8 +64,15 @@ export default function WatermarkTool() {
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.file, result.file.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'watermark',
+      toolName: 'Filigran Ekle',
+      fileSizeBefore: file.size,
+      fileSizeAfter: result.file.size,
+    });
   };
 
   return (

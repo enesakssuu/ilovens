@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { convertImage, type ImageFormat, downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 const FORMAT_OPTIONS: { value: ImageFormat; label: string; description: string; color: string }[] = [
   { value: 'jpeg', label: 'JPG', description: 'Best for photos', color: 'bg-orange-500' },
@@ -16,6 +17,10 @@ export default function ConvertTool() {
   const { t, i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'convert', toolName: 'Format Dönüştür' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [targetFormat, setTargetFormat] = useState<ImageFormat>('jpeg');
@@ -42,6 +47,13 @@ export default function ConvertTool() {
       const converted = await convertImage(file, targetFormat);
       const url = URL.createObjectURL(converted);
       setResult({ file: converted, url });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'convert',
+        toolName: 'Format Dönüştür',
+        fileSizeBefore: file.size,
+        fileSizeAfter: converted.size,
+      });
     } catch (err) {
       setError(isEnglish ? 'Processing failed. Please try another image.' : 'İşlem başarısız. Lütfen başka bir görsel deneyin.');
     } finally {

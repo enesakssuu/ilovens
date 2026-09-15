@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Wand2, Download } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 interface Filters {
   brightness: number;
@@ -21,6 +22,10 @@ export default function PhotoEditorTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'photo-editor', toolName: 'Fotoğraf Editörü' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -57,12 +62,26 @@ export default function PhotoEditorTool() {
       const dataUrl = canvas.toDataURL(mime, 0.93);
       const base = file.name.replace(/\.[^.]+$/, '');
       setResult({ url: dataUrl, name: `${base}_edited.${ext}` });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'photo-editor',
+        toolName: 'Fotoğraf Editörü',
+        fileSizeBefore: file.size,
+        fileSizeAfter: file.size,
+      });
     } finally { setProcessing(false); }
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.url, result.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'photo-editor',
+      toolName: 'Fotoğraf Editörü',
+      fileSizeBefore: file.size,
+      fileSizeAfter: file.size,
+    });
   };
 
   const sliders: { key: keyof Filters; label: string; min: number; max: number; unit: string }[] = [

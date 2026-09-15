@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Eye, Download, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { downloadFile } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 
 interface BlurRegion { x: number; y: number; w: number; h: number; }
 
@@ -12,6 +13,10 @@ export default function BlurFaceTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'blur-face', toolName: 'Yüz Sansürle' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -70,12 +75,26 @@ export default function BlurFaceTool() {
       const dataUrl = canvas.toDataURL(mime, 0.93);
       const base = file.name.replace(/\.[^.]+$/, '');
       setResult({ url: dataUrl, name: `${base}_blurred.${ext}` });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'blur-face',
+        toolName: 'Yüz Sansürle',
+        fileSizeBefore: file.size,
+        fileSizeAfter: file.size,
+      });
     } finally { setProcessing(false); }
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.url, result.name);
+    trackEvent({
+      type: 'download',
+      toolId: 'blur-face',
+      toolName: 'Yüz Sansürle',
+      fileSizeBefore: file.size,
+      fileSizeAfter: file.size,
+    });
   };
 
   return (

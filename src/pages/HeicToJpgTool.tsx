@@ -1,16 +1,21 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ImageDown, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { downloadFile, formatBytes } from '../utils/imageProcessor';
+import { trackEvent } from '../utils/analytics';
 import heic2any from 'heic2any';
 
 export default function HeicToJpgTool() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
+
+  useEffect(() => {
+    trackEvent({ type: 'pageview', toolId: 'heic-to-jpg', toolName: 'HEIC to JPG' });
+  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [converting, setConverting] = useState(false);
@@ -67,6 +72,13 @@ export default function HeicToJpgTool() {
         fileName: outName,
         size: outputBlob.size,
       });
+      trackEvent({
+        type: 'tool_use',
+        toolId: 'heic-to-jpg',
+        toolName: 'HEIC to JPG',
+        fileSizeBefore: selectedFile.size,
+        fileSizeAfter: outputBlob.size,
+      });
     } catch (err: any) {
       console.error('HEIC conversion failed:', err);
       setError(
@@ -80,8 +92,15 @@ export default function HeicToJpgTool() {
   }, [isEnglish]);
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!result || !file) return;
     downloadFile(result.blob, result.fileName);
+    trackEvent({
+      type: 'download',
+      toolId: 'heic-to-jpg',
+      toolName: 'HEIC to JPG',
+      fileSizeBefore: file.size,
+      fileSizeAfter: result.size,
+    });
   };
 
   return (

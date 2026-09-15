@@ -169,6 +169,8 @@ const organicScatterProps = [
   { borderRadius: '1.4rem 2.8rem 1.6rem 2.5rem', baseRotate: 4.5, offsetY: 22, offsetX: 0 },
 ];
 
+import { trackEvent } from '../utils/analytics';
+
 export default function Home() {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
@@ -179,6 +181,8 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    trackEvent({ type: 'pageview', toolName: 'Ana Sayfa' });
+
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 640);
     };
