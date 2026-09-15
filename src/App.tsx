@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -19,6 +19,16 @@ import MemeTool from './pages/MemeTool';
 import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 function LangWrapper() {
   const { lang } = useParams<{ lang: string }>();
@@ -63,6 +73,7 @@ const toolRoutes = [
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<LangWrapper />}>
           <Route index element={<Home />} />
