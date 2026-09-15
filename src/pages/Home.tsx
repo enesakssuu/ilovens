@@ -161,22 +161,22 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
   },
 ];
 
-// Organic non-uniform shapes, staggered margins & playful scatter angles
+// Distinct, highly organic shapes & playful scatter angles / offsets
 const organicScatterProps = [
-  { borderRadius: '2.5rem 1.1rem 2.2rem 1.3rem', baseRotate: -3.5, mt: 'mt-0' },
-  { borderRadius: '1.2rem 2.5rem 1.4rem 2.2rem', baseRotate: 2.8, mt: 'mt-6 sm:mt-8' },
-  { borderRadius: '2.2rem 1.4rem 2.4rem 1.2rem', baseRotate: -2.2, mt: 'mt-2 sm:mt-4' },
-  { borderRadius: '1.4rem 2.2rem 1.2rem 2.4rem', baseRotate: 4.0, mt: 'mt-8 sm:mt-12' },
-  { borderRadius: '2.4rem 1.3rem 2.1rem 1.5rem', baseRotate: -3.2, mt: 'mt-1 sm:mt-3' },
-  { borderRadius: '1.3rem 2.4rem 1.5rem 2.1rem', baseRotate: 2.5, mt: 'mt-5 sm:mt-7' },
-  { borderRadius: '2.1rem 1.5rem 2.3rem 1.2rem', baseRotate: -4.0, mt: 'mt-0' },
-  { borderRadius: '1.5rem 2.2rem 1.25rem 2.4rem', baseRotate: 3.2, mt: 'mt-6 sm:mt-9' },
-  { borderRadius: '2.3rem 1.2rem 2.1rem 1.4rem', baseRotate: -2.8, mt: 'mt-3 sm:mt-5' },
-  { borderRadius: '1.25rem 2.4rem 1.4rem 2.2rem', baseRotate: 3.5, mt: 'mt-7 sm:mt-10' },
-  { borderRadius: '2.2rem 1.4rem 2.5rem 1.2rem', baseRotate: -3.0, mt: 'mt-2 sm:mt-4' },
-  { borderRadius: '1.4rem 2.3rem 1.2rem 2.4rem', baseRotate: 2.2, mt: 'mt-5 sm:mt-8' },
-  { borderRadius: '2.4rem 1.2rem 2.1rem 1.5rem', baseRotate: -2.5, mt: 'mt-1 sm:mt-3' },
-  { borderRadius: '1.3rem 2.5rem 1.5rem 2.1rem', baseRotate: 3.8, mt: 'mt-6 sm:mt-9' },
+  { borderRadius: '3rem 1.2rem 2.4rem 1.5rem', baseRotate: -5.5, offsetY: -12, offsetX: -10 },
+  { borderRadius: '1.4rem 3.2rem 1.6rem 2.8rem', baseRotate: 4.5, offsetY: 24, offsetX: 8 },
+  { borderRadius: '2.8rem 1.6rem 3.2rem 1.3rem', baseRotate: -3.8, offsetY: 6, offsetX: -6 },
+  { borderRadius: '1.5rem 2.8rem 1.3rem 3.4rem', baseRotate: 6.2, offsetY: 32, offsetX: 12 },
+  { borderRadius: '3.2rem 1.4rem 2.6rem 1.8rem', baseRotate: -4.8, offsetY: -8, offsetX: -14 },
+  { borderRadius: '1.6rem 3.0rem 1.8rem 2.6rem', baseRotate: 3.8, offsetY: 18, offsetX: 6 },
+  { borderRadius: '2.9rem 1.8rem 3.4rem 1.4rem', baseRotate: -6.0, offsetY: 2, offsetX: -8 },
+  { borderRadius: '1.8rem 2.9rem 1.4rem 3.2rem', baseRotate: 5.2, offsetY: 28, offsetX: 10 },
+  { borderRadius: '3.4rem 1.5rem 2.8rem 1.6rem', baseRotate: -4.2, offsetY: 12, offsetX: -12 },
+  { borderRadius: '1.5rem 3.3rem 1.8rem 2.9rem', baseRotate: 5.8, offsetY: 36, offsetX: 14 },
+  { borderRadius: '2.7rem 1.8rem 3.1rem 1.3rem', baseRotate: -4.5, offsetY: 4, offsetX: -6 },
+  { borderRadius: '1.8rem 3.1rem 1.4rem 3.0rem', baseRotate: 3.5, offsetY: 22, offsetX: 8 },
+  { borderRadius: '3.1rem 1.4rem 2.7rem 1.9rem', baseRotate: -3.8, offsetY: 8, offsetX: -10 },
+  { borderRadius: '1.6rem 3.4rem 1.9rem 2.8rem', baseRotate: 6.0, offsetY: 30, offsetX: 12 },
 ];
 
 export default function Home() {
@@ -185,27 +185,27 @@ export default function Home() {
   const basePath = isEnglish ? '/en' : '';
   const tools = useTools(isEnglish);
 
-  // Track hovered card for physical repulsion physics
+  // Track hovered card for massive physical repulsion physics
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-28">
+    <div className="max-w-[1450px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-36 overflow-hidden">
 
       {/* ── HERO HEADER ────────────────────────────────────── */}
-      <div className="text-center mb-16 max-w-3xl mx-auto">
+      <div className="text-center mb-20 max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold text-[#6E6E73]"
+          className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full text-[12.5px] font-semibold text-[#6E6E73]"
           style={{
-            background: 'rgba(255,255,255,0.88)',
-            border: '1px solid rgba(0,0,0,0.07)',
+            background: 'rgba(255,255,255,0.92)',
+            border: '1px solid rgba(0,0,0,0.08)',
             backdropFilter: 'blur(16px)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
           }}
         >
-          <Sparkles size={12} className="text-brand-purple" strokeWidth={2} />
+          <Sparkles size={13} className="text-brand-purple" strokeWidth={2} />
           {isEnglish ? '14 tools · 100% free · No server uploads' : '14 araç · %100 ücretsiz · Sunucuya gönderilmez'}
         </motion.div>
 
@@ -213,7 +213,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.06 }}
-          className="text-[44px] sm:text-[62px] font-black tracking-[-0.04em] leading-[1.08] text-brand-text mb-4"
+          className="text-[44px] sm:text-[64px] font-black tracking-[-0.04em] leading-[1.08] text-brand-text mb-4"
         >
           {isEnglish ? (
             <>
@@ -236,7 +236,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.13 }}
-          className="text-[16.5px] text-[#6E6E73] leading-relaxed max-w-lg mx-auto"
+          className="text-[17px] text-[#6E6E73] leading-relaxed max-w-lg mx-auto"
         >
           {isEnglish
             ? 'Compress, resize, convert, watermark and more. Everything runs in your browser.'
@@ -262,27 +262,29 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* ── SCATTER CANVAS GRID WITH SURROUNDING REPULSION PHYSICS ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-7 items-start">
+      {/* ── SCATTER CANVAS GRID WITH DRAMATIC SURROUNDING REPULSION PHYSICS ──────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-7 sm:gap-10 items-start">
         {tools.map((tool, i) => {
           const scatProps = organicScatterProps[i % organicScatterProps.length];
 
-          // Compute physical repulsion parameters based on distance to hovered card
+          // Base initial position including organic offsets
           let scale = 1;
           let rotate = scatProps.baseRotate;
-          let x = 0;
-          let y = 0;
+          let x = scatProps.offsetX;
+          let y = scatProps.offsetY;
           let zIndex = 1;
           let opacity = 1;
 
           if (hoveredIdx === i) {
-            // Hovered Card grows big, stands straight and floats on top
-            scale = 1.16;
+            // Hovered Card grows big, stands straight and floats high on top
+            scale = 1.25;
             rotate = 0;
-            zIndex = 50;
+            x = 0;
+            y = 0;
+            zIndex = 100;
             opacity = 1;
           } else if (hoveredIdx !== null) {
-            // Compute surrounding displacement vector
+            // Compute surrounding displacement vector dynamically
             const cols = 4;
             const hCol = hoveredIdx % cols;
             const hRow = Math.floor(hoveredIdx / cols);
@@ -293,26 +295,21 @@ export default function Home() {
             const dy = iRow - hRow;
             const dist = Math.hypot(dx, dy);
 
-            if (dist <= 2.5) {
-              // Surrounding nearby cards dynamically push AWAY from hovered card
-              const pushMag = 36 / Math.max(1, dist);
-              x = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -16 : 16);
-              y = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -14 : 14);
-              scale = 0.94;
-              opacity = 0.78;
-            } else {
-              const pushMag = 16 / dist;
-              x = Math.sign(dx || 1) * pushMag;
-              y = Math.sign(dy || 1) * pushMag;
-              scale = 0.97;
-              opacity = 0.86;
-            }
+            // MASSIVE 75px repulsion push for surrounding cards!
+            const pushMag = Math.min(85, 75 / Math.max(1, dist));
+            const pushX = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -35 : 35);
+            const pushY = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -30 : 30);
+
+            x = scatProps.offsetX + pushX;
+            y = scatProps.offsetY + pushY;
+            scale = dist <= 2 ? 0.90 : 0.95;
+            opacity = dist <= 2 ? 0.70 : 0.85;
           }
 
           return (
             <motion.div
               key={tool.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 35 }}
               animate={{
                 scale,
                 rotate,
@@ -323,25 +320,25 @@ export default function Home() {
               }}
               transition={{
                 type: 'spring',
-                stiffness: 240,
-                damping: 22,
-                mass: 0.8,
+                stiffness: 260,
+                damping: 20,
+                mass: 0.75,
               }}
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
-              className={`relative ${scatProps.mt}`}
+              className="relative"
             >
               <Link to={`${basePath}/${tool.id}`} className="block group">
                 <div
-                  className="glass-card p-6 relative transition-colors duration-200"
+                  className="p-6 relative transition-colors duration-200"
                   style={{
                     borderRadius: scatProps.borderRadius,
                     backgroundColor: '#ffffff',
-                    border: hoveredIdx === i ? '1px solid rgba(184, 150, 223, 0.6)' : '1px solid rgba(0, 0, 0, 0.08)',
+                    border: hoveredIdx === i ? '1.5px solid rgba(184, 150, 223, 0.7)' : '1px solid rgba(0, 0, 0, 0.09)',
                     boxShadow:
                       hoveredIdx === i
-                        ? '0 30px 80px -15px rgba(50, 54, 66, 0.24), 0 15px 35px -8px rgba(184, 150, 223, 0.35)'
-                        : '0 4px 20px rgba(0, 0, 0, 0.04)',
+                        ? '0 35px 90px -15px rgba(50, 54, 66, 0.28), 0 15px 40px -8px rgba(184, 150, 223, 0.4)'
+                        : '0 4px 24px rgba(0, 0, 0, 0.05)',
                   }}
                 >
                   {/* Badge */}
@@ -354,18 +351,18 @@ export default function Home() {
                   {/* Header row */}
                   <div className="flex items-start gap-3 mb-3 relative z-10">
                     <div
-                      className={`w-10.5 h-10.5 rounded-[14px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg} transition-transform duration-300 ${
-                        hoveredIdx === i ? 'scale-110' : ''
+                      className={`w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg} transition-transform duration-300 ${
+                        hoveredIdx === i ? 'scale-110 rotate-[-4deg]' : ''
                       }`}
-                      style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.15)' }}
+                      style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.16)' }}
                     >
                       {tool.icon}
                     </div>
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <h3 className="text-[14.5px] font-bold tracking-tight text-brand-text leading-snug flex items-center gap-1">
+                      <h3 className="text-[15px] font-bold tracking-tight text-brand-text leading-snug flex items-center gap-1">
                         {tool.title}
                         <ArrowRight
-                          size={12}
+                          size={13}
                           strokeWidth={2.5}
                           className={`transition-all duration-200 text-brand-purple flex-shrink-0 ${
                             hoveredIdx === i ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1.5'
@@ -382,7 +379,7 @@ export default function Home() {
 
                   {/* Feature bullets */}
                   {tool.extra && (
-                    <ul className="mt-3.5 space-y-1.5 border-t border-black/[0.06] pt-3.5 relative z-10">
+                    <ul className="mt-4 space-y-1.5 border-t border-black/[0.07] pt-3.5 relative z-10">
                       {tool.extra.map((f) => (
                         <li key={f} className="flex items-center gap-2 text-[11.5px] text-[#6E6E73]">
                           <div className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0" />
