@@ -13,7 +13,7 @@ export const AdminDashboard: React.FC = () => {
   const { i18n } = useTranslation();
   const isEnglish = i18n.language === 'en';
 
-  const [data, setData] = useState<AnalyticsSummary | null>(null);
+  const [data, setData] = useState<AnalyticsSummary>(() => getAnalyticsSummary());
   const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'live' | 'devices'>('overview');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -71,8 +71,6 @@ export const AdminDashboard: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  if (!data) return null;
 
   // Compute total tool executions
   const totalToolExecutions = Object.values(data.toolUsageBreakdown).reduce((acc, curr) => acc + curr, 0);

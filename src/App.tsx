@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -19,15 +19,24 @@ import MemeTool from './pages/MemeTool';
 import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
-
 import AdminDashboard from './pages/AdminDashboard';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname]);
+
+    // Support #/admin, #admin, ?/admin, ?admin fallback URLs
+    const hash = window.location.hash.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    if (hash.includes('admin') || hash.includes('dashboard') || search.includes('admin') || search.includes('dashboard')) {
+      if (!pathname.includes('admin') && !pathname.includes('dashboard')) {
+        navigate('/admin', { replace: true });
+      }
+    }
+  }, [pathname, navigate]);
 
   return null;
 }
@@ -91,6 +100,14 @@ export default function App() {
           {toolRoutes.map((r) => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
+        </Route>
+
+        {/* Direct admin fallback routes */}
+        <Route path="/admin" element={<LangWrapper />}>
+          <Route index element={<AdminDashboard />} />
+        </Route>
+        <Route path="/dashboard" element={<LangWrapper />}>
+          <Route index element={<AdminDashboard />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
