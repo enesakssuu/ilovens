@@ -239,8 +239,8 @@ export default function Home() {
           className="text-[16px] text-[#6E6E73] leading-relaxed max-w-md mx-auto"
         >
           {isEnglish
-            ? 'Compress, resize, convert, watermark and more — everything runs in your browser.'
-            : 'Sıkıştır, boyutlandır, dönüştür, filigran ekle — her şey tarayıcınızda çalışır.'}
+            ? 'Compress, resize, convert, watermark and more. Everything runs in your browser.'
+            : 'Sıkıştır, boyutlandır, dönüştür, filigran ekle. Tüm işlemler tarayıcınızda gerçekleşir.'}
         </motion.p>
 
         <motion.div

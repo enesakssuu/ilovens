@@ -12,7 +12,7 @@ const resources = {
       home: {
         hero: 'Görselleriniz İçin',
         heroAccent: 'Her Şey Burada.',
-        heroSub: 'Sıkıştır, yeniden boyutlandır, dönüştür ve filigran ekle. Ücretsiz, hızlı, sunucusuz — tüm işlemler tarayıcında gerçekleşir.',
+        heroSub: 'Sıkıştır, yeniden boyutlandır, dönüştür ve filigran ekle. Ücretsiz, hızlı ve yerel. Tüm işlemler tarayıcında gerçekleşir.',
         tools: 'Araçlar',
         compress: {
           title: 'Görseli Sıkıştır',
@@ -101,7 +101,7 @@ const resources = {
       home: {
         hero: 'Everything For',
         heroAccent: 'Your Images.',
-        heroSub: 'Compress, resize, convert, and watermark. Free, fast, serverless — all processing happens in your browser.',
+        heroSub: 'Compress, resize, convert, and watermark. Free, fast and local. All processing happens in your browser.',
         tools: 'Tools',
         compress: {
           title: 'Compress Image',

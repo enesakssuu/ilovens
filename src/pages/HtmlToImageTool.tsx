@@ -16,7 +16,7 @@ const sampleTemplates = [
     nameEn: 'Quote Card',
     html: `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; border-radius: 24px; color: white; font-family: sans-serif; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
   <p style="font-size: 24px; font-weight: 700; margin: 0 0 16px 0; line-height: 1.4;">"Tasarım sadece nasıl göründüğü değil, nasıl çalıştığıdır."</p>
-  <p style="font-size: 16px; opacity: 0.9; margin: 0; font-weight: 500;">— Steve Jobs</p>
+  <p style="font-size: 16px; opacity: 0.9; margin: 0; font-weight: 500;">Steve Jobs</p>
 </div>`,
   },
   {

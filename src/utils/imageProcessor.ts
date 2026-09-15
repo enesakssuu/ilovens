@@ -1,7 +1,7 @@
 /**
  * imageProcessor.ts
  * Pure client-side image processing engine using HTML5 Canvas API.
- * No backend, no third-party processing services — everything runs in the browser.
+ * No backend, no third-party processing services. Everything runs in the browser.
  */
 
 /** Load a File into an HTMLImageElement. */

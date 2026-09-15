@@ -88,7 +88,7 @@ const useMenuGroups = (isEnglish: boolean, basePath: string): MenuGroup[] => [
       title: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü',
       desc: isEnglish
         ? 'Adjust brightness, contrast, saturation and apply filters in real-time with a live preview.'
-        : 'Parlaklık, kontrast, doygunluk ve filtreler — canlı önizleme ile gerçek zamanlı ayarla.',
+        : 'Parlaklık, kontrast, doygunluk ve filtreleri canlı önizleme ile gerçek zamanlı ayarla.',
       icon: <Wand2 size={26} strokeWidth={1.8} />,
       iconBg: 'bg-fuchsia-600',
       path: `${basePath}/photo-editor`,
