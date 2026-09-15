@@ -96,7 +96,7 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
   {
     id: 'heic-to-jpg',
     icon: <ImageDown size={20} strokeWidth={1.5} />,
-    title: 'HEIC → JPG',
+    title: 'HEIC to JPG',
     desc: isEnglish
       ? 'Convert Apple iPhone HEIC photos to universal JPG format directly in browser.'
       : 'Apple iPhone HEIC fotoğraflarını evrensel JPG formatına dönüştür.',
@@ -153,7 +153,7 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
   {
     id: 'html-to-image',
     icon: <Globe2 size={20} strokeWidth={1.5} />,
-    title: isEnglish ? 'HTML to Image' : 'HTML → Görsel',
+    title: isEnglish ? 'HTML to Image' : 'HTML to Görsel',
     desc: isEnglish
       ? 'Render custom HTML/CSS code or template cards into crisp PNG images.'
       : 'Özel HTML/CSS kodlarını veya şablon kartlarını yüksek kaliteli PNG görsele dönüştür.',
@@ -161,22 +161,22 @@ const useTools = (isEnglish: boolean): ToolItem[] => [
   },
 ];
 
-// Organic non-uniform shapes & playful initial tilt rotations
-const organicCardStyles = [
-  { borderRadius: '2.2rem 1.3rem 2rem 1.4rem', baseRotate: -1.8 },
-  { borderRadius: '1.4rem 2.2rem 1.3rem 2rem', baseRotate: 1.6 },
-  { borderRadius: '2rem 1.5rem 2.3rem 1.3rem', baseRotate: -1.2 },
-  { borderRadius: '1.3rem 2rem 1.4rem 2.2rem', baseRotate: 2.1 },
-  { borderRadius: '2rem 1.4rem 2.2rem 1.25rem', baseRotate: -1.5 },
-  { borderRadius: '1.25rem 2.2rem 1.5rem 2.1rem', baseRotate: 1.8 },
-  { borderRadius: '2.1rem 1.3rem 2rem 1.5rem', baseRotate: -2.0 },
-  { borderRadius: '1.5rem 2.1rem 1.25rem 2.2rem', baseRotate: 1.4 },
-  { borderRadius: '2.2rem 1.4rem 2.1rem 1.3rem', baseRotate: -1.6 },
-  { borderRadius: '1.3rem 2rem 1.5rem 2.1rem', baseRotate: 1.7 },
-  { borderRadius: '2.1rem 1.5rem 2.2rem 1.25rem', baseRotate: -1.3 },
-  { borderRadius: '1.25rem 2.1rem 1.3rem 2rem', baseRotate: 2.2 },
-  { borderRadius: '2rem 1.3rem 2.1rem 1.4rem', baseRotate: -1.1 },
-  { borderRadius: '1.4rem 2.2rem 1.25rem 2.1rem', baseRotate: 1.9 },
+// Organic non-uniform shapes, staggered margins & playful scatter angles
+const organicScatterProps = [
+  { borderRadius: '2.5rem 1.1rem 2.2rem 1.3rem', baseRotate: -3.5, mt: 'mt-0' },
+  { borderRadius: '1.2rem 2.5rem 1.4rem 2.2rem', baseRotate: 2.8, mt: 'mt-6 sm:mt-8' },
+  { borderRadius: '2.2rem 1.4rem 2.4rem 1.2rem', baseRotate: -2.2, mt: 'mt-2 sm:mt-4' },
+  { borderRadius: '1.4rem 2.2rem 1.2rem 2.4rem', baseRotate: 4.0, mt: 'mt-8 sm:mt-12' },
+  { borderRadius: '2.4rem 1.3rem 2.1rem 1.5rem', baseRotate: -3.2, mt: 'mt-1 sm:mt-3' },
+  { borderRadius: '1.3rem 2.4rem 1.5rem 2.1rem', baseRotate: 2.5, mt: 'mt-5 sm:mt-7' },
+  { borderRadius: '2.1rem 1.5rem 2.3rem 1.2rem', baseRotate: -4.0, mt: 'mt-0' },
+  { borderRadius: '1.5rem 2.2rem 1.25rem 2.4rem', baseRotate: 3.2, mt: 'mt-6 sm:mt-9' },
+  { borderRadius: '2.3rem 1.2rem 2.1rem 1.4rem', baseRotate: -2.8, mt: 'mt-3 sm:mt-5' },
+  { borderRadius: '1.25rem 2.4rem 1.4rem 2.2rem', baseRotate: 3.5, mt: 'mt-7 sm:mt-10' },
+  { borderRadius: '2.2rem 1.4rem 2.5rem 1.2rem', baseRotate: -3.0, mt: 'mt-2 sm:mt-4' },
+  { borderRadius: '1.4rem 2.3rem 1.2rem 2.4rem', baseRotate: 2.2, mt: 'mt-5 sm:mt-8' },
+  { borderRadius: '2.4rem 1.2rem 2.1rem 1.5rem', baseRotate: -2.5, mt: 'mt-1 sm:mt-3' },
+  { borderRadius: '1.3rem 2.5rem 1.5rem 2.1rem', baseRotate: 3.8, mt: 'mt-6 sm:mt-9' },
 ];
 
 export default function Home() {
@@ -185,24 +185,24 @@ export default function Home() {
   const basePath = isEnglish ? '/en' : '';
   const tools = useTools(isEnglish);
 
-  // Track hovered card for proximity repulsion physics
+  // Track hovered card for physical repulsion physics
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-28">
 
-      {/* ── HERO ────────────────────────────────────────────── */}
-      <div className="text-center mb-14">
+      {/* ── HERO HEADER ────────────────────────────────────── */}
+      <div className="text-center mb-16 max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
           className="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold text-[#6E6E73]"
           style={{
-            background: 'rgba(255,255,255,0.85)',
+            background: 'rgba(255,255,255,0.88)',
             border: '1px solid rgba(0,0,0,0.07)',
             backdropFilter: 'blur(16px)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}
         >
           <Sparkles size={12} className="text-brand-purple" strokeWidth={2} />
@@ -213,7 +213,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.06 }}
-          className="text-[42px] sm:text-[60px] font-black tracking-[-0.04em] leading-[1.1] text-brand-text mb-4"
+          className="text-[44px] sm:text-[62px] font-black tracking-[-0.04em] leading-[1.08] text-brand-text mb-4"
         >
           {isEnglish ? (
             <>
@@ -236,7 +236,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.13 }}
-          className="text-[16px] text-[#6E6E73] leading-relaxed max-w-md mx-auto"
+          className="text-[16.5px] text-[#6E6E73] leading-relaxed max-w-lg mx-auto"
         >
           {isEnglish
             ? 'Compress, resize, convert, watermark and more. Everything runs in your browser.'
@@ -247,14 +247,14 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.22 }}
-          className="flex items-center justify-center gap-5 mt-5"
+          className="flex items-center justify-center gap-6 mt-6"
         >
           {[
-            { icon: <Lock size={11} strokeWidth={2} />, label: isEnglish ? 'No server uploads' : 'Sunucu yok' },
-            { icon: <Zap size={11} strokeWidth={2} />, label: isEnglish ? 'Instant results' : 'Anında sonuç' },
-            { icon: <Sparkles size={11} strokeWidth={2} />, label: isEnglish ? 'Free forever' : 'Daima ücretsiz' },
+            { icon: <Lock size={12} strokeWidth={2} />, label: isEnglish ? 'No server uploads' : 'Sunucu yok' },
+            { icon: <Zap size={12} strokeWidth={2} />, label: isEnglish ? 'Instant results' : 'Anında sonuç' },
+            { icon: <Sparkles size={12} strokeWidth={2} />, label: isEnglish ? 'Free forever' : 'Daima ücretsiz' },
           ].map((b) => (
-            <div key={b.label} className="flex items-center gap-1.5 text-[12px] font-medium text-[#6E6E73]">
+            <div key={b.label} className="flex items-center gap-1.5 text-[12.5px] font-medium text-[#6E6E73]">
               <span className="text-brand-text">{b.icon}</span>
               {b.label}
             </div>
@@ -262,29 +262,28 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* ── ORGANIC SCATTER GRID WITH PROXIMITY REPULSION HOVER ────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+      {/* ── SCATTER CANVAS GRID WITH SURROUNDING REPULSION PHYSICS ──────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-7 items-start">
         {tools.map((tool, i) => {
-          const orgStyle = organicCardStyles[i % organicCardStyles.length];
+          const scatProps = organicScatterProps[i % organicScatterProps.length];
 
-          // Determine card animation parameters based on proximity to hovered card
+          // Compute physical repulsion parameters based on distance to hovered card
           let scale = 1;
-          let rotate = orgStyle.baseRotate;
+          let rotate = scatProps.baseRotate;
           let x = 0;
           let y = 0;
           let zIndex = 1;
           let opacity = 1;
-          let shadow = '0 4px 20px rgba(0, 0, 0, 0.04)';
 
           if (hoveredIdx === i) {
-            // Hovered Card Expands & Rotates straight
-            scale = 1.1;
+            // Hovered Card grows big, stands straight and floats on top
+            scale = 1.16;
             rotate = 0;
-            zIndex = 40;
-            shadow = '0 25px 60px -10px rgba(50, 54, 66, 0.22), 0 15px 30px -8px rgba(184, 150, 223, 0.35)';
+            zIndex = 50;
+            opacity = 1;
           } else if (hoveredIdx !== null) {
-            // Calculate relative grid position to push surrounding cards away!
-            const cols = 4; // grid columns
+            // Compute surrounding displacement vector
+            const cols = 4;
             const hCol = hoveredIdx % cols;
             const hRow = Math.floor(hoveredIdx / cols);
             const iCol = i % cols;
@@ -294,23 +293,26 @@ export default function Home() {
             const dy = iRow - hRow;
             const dist = Math.hypot(dx, dy);
 
-            if (dist <= 2.2) {
-              // Nearby surrounding cards part away dynamically
-              const pushMag = 24 / Math.max(1, dist);
-              x = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -12 : 12);
-              y = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -10 : 10);
-              scale = 0.95;
-              opacity = 0.8;
+            if (dist <= 2.5) {
+              // Surrounding nearby cards dynamically push AWAY from hovered card
+              const pushMag = 36 / Math.max(1, dist);
+              x = dx !== 0 ? Math.sign(dx) * pushMag : (i % 2 === 0 ? -16 : 16);
+              y = dy !== 0 ? Math.sign(dy) * pushMag : (i % 3 === 0 ? -14 : 14);
+              scale = 0.94;
+              opacity = 0.78;
             } else {
-              scale = 0.98;
-              opacity = 0.9;
+              const pushMag = 16 / dist;
+              x = Math.sign(dx || 1) * pushMag;
+              y = Math.sign(dy || 1) * pushMag;
+              scale = 0.97;
+              opacity = 0.86;
             }
           }
 
           return (
             <motion.div
               key={tool.id}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{
                 scale,
                 rotate,
@@ -321,22 +323,25 @@ export default function Home() {
               }}
               transition={{
                 type: 'spring',
-                stiffness: 260,
-                damping: 24,
+                stiffness: 240,
+                damping: 22,
                 mass: 0.8,
               }}
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
-              className="relative"
+              className={`relative ${scatProps.mt}`}
             >
               <Link to={`${basePath}/${tool.id}`} className="block group">
                 <div
-                  className="glass-card p-5.5 relative transition-all duration-300"
+                  className="glass-card p-6 relative transition-colors duration-200"
                   style={{
-                    borderRadius: orgStyle.borderRadius,
-                    boxShadow: shadow,
-                    borderColor: hoveredIdx === i ? 'rgba(184, 150, 223, 0.45)' : 'rgba(0, 0, 0, 0.07)',
-                    backgroundColor: hoveredIdx === i ? '#ffffff' : undefined,
+                    borderRadius: scatProps.borderRadius,
+                    backgroundColor: '#ffffff',
+                    border: hoveredIdx === i ? '1px solid rgba(184, 150, 223, 0.6)' : '1px solid rgba(0, 0, 0, 0.08)',
+                    boxShadow:
+                      hoveredIdx === i
+                        ? '0 30px 80px -15px rgba(50, 54, 66, 0.24), 0 15px 35px -8px rgba(184, 150, 223, 0.35)'
+                        : '0 4px 20px rgba(0, 0, 0, 0.04)',
                   }}
                 >
                   {/* Badge */}
@@ -349,15 +354,15 @@ export default function Home() {
                   {/* Header row */}
                   <div className="flex items-start gap-3 mb-3 relative z-10">
                     <div
-                      className={`w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg} transition-transform duration-300 ${
-                        hoveredIdx === i ? 'scale-110 rotate-[-4deg]' : ''
+                      className={`w-10.5 h-10.5 rounded-[14px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg} transition-transform duration-300 ${
+                        hoveredIdx === i ? 'scale-110' : ''
                       }`}
                       style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.15)' }}
                     >
                       {tool.icon}
                     </div>
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <h3 className="text-[14px] font-bold tracking-tight text-brand-text leading-snug flex items-center gap-1">
+                      <h3 className="text-[14.5px] font-bold tracking-tight text-brand-text leading-snug flex items-center gap-1">
                         {tool.title}
                         <ArrowRight
                           size={12}
@@ -371,13 +376,13 @@ export default function Home() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-[12.5px] text-[#6E6E73] leading-relaxed mb-0 relative z-10">
+                  <p className="text-[13px] text-[#6E6E73] leading-relaxed mb-0 relative z-10">
                     {tool.desc}
                   </p>
 
                   {/* Feature bullets */}
                   {tool.extra && (
-                    <ul className="mt-3.5 space-y-1.5 border-t border-black/[0.06] pt-3 relative z-10">
+                    <ul className="mt-3.5 space-y-1.5 border-t border-black/[0.06] pt-3.5 relative z-10">
                       {tool.extra.map((f) => (
                         <li key={f} className="flex items-center gap-2 text-[11.5px] text-[#6E6E73]">
                           <div className="w-1.5 h-1.5 rounded-full bg-brand-purple flex-shrink-0" />
