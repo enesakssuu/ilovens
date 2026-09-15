@@ -211,20 +211,14 @@ export default function Home() {
           {isEnglish ? (
             <>
               Professional image tools.<br />
-              <span
-                className="inline-block bg-gradient-to-r from-[#5087F8] via-[#F45187] to-[#A05CE5] bg-clip-text text-transparent pb-1"
-                style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-              >
+              <span className="animated-gradient-text pb-1">
                 Free, fast, private.
               </span>
             </>
           ) : (
             <>
               Profesyonel görsel araçları.<br />
-              <span
-                className="inline-block bg-gradient-to-r from-[#5087F8] via-[#F45187] to-[#A05CE5] bg-clip-text text-transparent pb-1"
-                style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
-              >
+              <span className="animated-gradient-text pb-1">
                 Ücretsiz, hızlı, özel.
               </span>
             </>
@@ -262,7 +256,7 @@ export default function Home() {
       </div>
 
       {/* ── MASONRY GRID ────────────────────────────────────── */}
-      <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3">
+      <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
         {tools.map((tool, i) => (
           <motion.div
             key={tool.id}
@@ -271,24 +265,24 @@ export default function Home() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-40px' }}
-            className="break-inside-avoid mb-3"
+            className="break-inside-avoid mb-4"
           >
             <Link to={`${basePath}/${tool.id}`} className="block group">
               <div
-                className="glass-card p-5 relative overflow-hidden"
+                className="glass-card liquid-card p-5 relative"
                 style={{ borderRadius: '1.25rem' }}
               >
                 {/* Badge */}
                 {tool.badge && (
-                  <span className="absolute top-4 right-4 text-[9px] font-bold text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-brand-blue via-brand-pink to-brand-purple shadow-sm">
+                  <span className="absolute top-4 right-4 text-[9px] font-bold text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-brand-blue via-brand-pink to-brand-purple shadow-sm z-10">
                     {tool.badge}
                   </span>
                 )}
 
                 {/* Header row */}
-                <div className="flex items-start gap-3 mb-3">
+                <div className="flex items-start gap-3 mb-3 relative z-10">
                   <div
-                    className={`w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg}`}
+                    className={`liquid-icon w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 text-white ${tool.iconBg}`}
                     style={{ boxShadow: '0 3px 10px rgba(0,0,0,0.15)' }}
                   >
                     {tool.icon}
@@ -306,13 +300,13 @@ export default function Home() {
                 </div>
 
                 {/* Description */}
-                <p className="text-[12.5px] text-[#6E6E73] leading-relaxed mb-0">
+                <p className="text-[12.5px] text-[#6E6E73] leading-relaxed mb-0 relative z-10">
                   {tool.desc}
                 </p>
 
                 {/* Feature bullets (makes card taller = masonry variation) */}
                 {tool.extra && (
-                  <ul className="mt-3 space-y-1.5 border-t border-black/[0.05] pt-3">
+                  <ul className="mt-3 space-y-1.5 border-t border-black/[0.05] pt-3 relative z-10">
                     {tool.extra.map((f) => (
                       <li key={f} className="flex items-center gap-2 text-[11.5px] text-[#6E6E73]">
                         <div className="w-1 h-1 rounded-full bg-brand-purple flex-shrink-0" />
@@ -321,16 +315,6 @@ export default function Home() {
                     ))}
                   </ul>
                 )}
-
-                {/* Hover glow */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(ellipse at 20% 20%, rgba(184,150,223,0.08) 0%, transparent 70%)',
-                    borderRadius: '1.25rem',
-                  }}
-                />
               </div>
             </Link>
           </motion.div>
