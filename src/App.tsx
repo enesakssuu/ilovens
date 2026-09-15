@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HashRouter, Routes, Route, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -72,7 +72,7 @@ const toolRoutes = [
 
 export default function App() {
   return (
-    <HashRouter>
+    <BrowserRouter basename="/ilovens">
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<LangWrapper />}>
@@ -91,6 +91,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
