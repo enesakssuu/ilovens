@@ -160,22 +160,7 @@ export const NotFound: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Layer 4: Floating Soft Color Swatches & Geometric Accents */}
-          <motion.div
-            animate={{
-              y: [0, 12, 0],
-              rotate: [0, 15, 0],
-            }}
-            transition={{
-              duration: 5,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-            className="absolute -bottom-3 left-2 sm:left-4 z-20 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-white shadow-lg text-[12px] font-bold text-zinc-700 flex items-center gap-1.5"
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FA7DA8] animate-ping" />
-            <span>{isEnglish ? 'Lost in canvas' : 'Kadraj Dışı'}</span>
-          </motion.div>
+
 
           <motion.div
             animate={{
