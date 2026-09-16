@@ -5,41 +5,43 @@ import { motion } from 'framer-motion';
 import {
   Home as HomeIcon,
   ArrowLeft,
-  Sparkles,
-  Minimize2,
-  RefreshCw,
-  Maximize2,
-  Wand2,
-  Palette,
-  Code2,
-  Plus
+  RotateCcw,
+  Plus,
+  Compass
 } from 'lucide-react';
 
-interface PhysicsBody {
+interface PhysicsObject {
   id: number;
-  type: 'text' | 'dot';
+  type: 'text404' | 'badge' | 'dot';
   text: string;
   x: number;
   y: number;
   vx: number;
   vy: number;
-  rotation: number;
-  vRot: number;
-  size: number;
+  angle: number;
+  vAngle: number;
   width: number;
   height: number;
+  radius: number;
   color: string;
-  opacity: number;
-  mass: number;
+  bgColor?: string;
+  textColor?: string;
+  isDragging?: boolean;
 }
 
-const BRAND_COLORS = [
-  '#FA7DA8', // Brand Coral Pink
-  '#B896DF', // Brand Purple
-  '#86B3F0', // Brand Sky Blue
-  '#E879F9', // Brand Fuchsia
-  '#F43F5E', // Brand Rose
-  '#7B8BFF', // Brand Indigo
+const BRAND_PALETTE = [
+  { bg: '#FA7DA8', text: '#FFFFFF', name: 'Pink' },
+  { bg: '#B896DF', text: '#FFFFFF', name: 'Purple' },
+  { bg: '#86B3F0', text: '#FFFFFF', name: 'Sky' },
+  { bg: '#7B8BFF', text: '#FFFFFF', name: 'Indigo' },
+  { bg: '#1D1D1F', text: '#FFFFFF', name: 'Dark' },
+  { bg: '#FFFFFF', text: '#1D1D1F', name: 'White' },
+];
+
+const BADGE_WORDS = [
+  'COMPRESS', 'RESIZE', 'CONVERT', 'SVG', 'WEBP',
+  'PNG', 'JPG', 'RAW 8K', 'CROP', 'WATERMARK',
+  'PHOTO EDIT', 'PALETTE', '404 ERROR', 'LOST PIXEL'
 ];
 
 export const NotFound: React.FC = () => {
@@ -50,42 +52,97 @@ export const NotFound: React.FC = () => {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const bodiesRef = useRef<PhysicsBody[]>([]);
-  const mouseRef = useRef<{ x: number; y: number; isMoving: boolean; prevX: number; prevY: number; vx: number; vy: number }>({
+  const objectsRef = useRef<PhysicsObject[]>([]);
+  const draggedObjRef = useRef<{ obj: PhysicsObject; offsetX: number; offsetY: number } | null>(null);
+  const mouseRef = useRef<{ x: number; y: number; prevX: number; prevY: number; vx: number; vy: number; isDown: boolean }>({
     x: -1000,
     y: -1000,
-    isMoving: false,
     prevX: 0,
     prevY: 0,
     vx: 0,
     vy: 0,
+    isDown: false,
   });
 
+  // Helper to create physics body
+  const spawnObject = (w: number, customX?: number, customY?: number): PhysicsObject => {
+    const rand = Math.random();
+    let type: 'text404' | 'badge' | 'dot' = 'text404';
+    if (rand < 0.45) type = 'text404';
+    else if (rand < 0.85) type = 'badge';
+    else type = 'dot';
 
+    const colorScheme = BRAND_PALETTE[Math.floor(Math.random() * BRAND_PALETTE.length)];
+    const x = customX !== undefined ? customX : Math.random() * (w - 120) + 60;
+    const y = customY !== undefined ? customY : -Math.random() * 500 - 60;
 
-  // Helper to spawn a single falling 404 or dot
-  const createBody = (width: number, fromTop = true, spawnX?: number, spawnY?: number): PhysicsBody => {
-    const isText = Math.random() > 0.18; // 82% 404 text, 18% circular dots
-    const size = isText ? Math.floor(Math.random() * 32) + 36 : Math.floor(Math.random() * 12) + 8;
-    const color = BRAND_COLORS[Math.floor(Math.random() * BRAND_COLORS.length)];
+    if (type === 'text404') {
+      const fontSize = Math.floor(Math.random() * 36) + 48; // 48px to 84px
+      return {
+        id: Math.random(),
+        type: 'text404',
+        text: '404',
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 3 + 2,
+        angle: (Math.random() - 0.5) * 0.8,
+        vAngle: (Math.random() - 0.5) * 0.04,
+        width: fontSize * 2.1,
+        height: fontSize * 0.9,
+        radius: fontSize,
+        color: colorScheme.bg === '#FFFFFF' ? '#FA7DA8' : colorScheme.bg,
+      };
+    } else if (type === 'badge') {
+      const text = BADGE_WORDS[Math.floor(Math.random() * BADGE_WORDS.length)];
+      const textWidth = text.length * 10 + 28;
+      const height = 36;
+      return {
+        id: Math.random(),
+        type: 'badge',
+        text,
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 3 + 2,
+        angle: (Math.random() - 0.5) * 0.6,
+        vAngle: (Math.random() - 0.5) * 0.03,
+        width: textWidth,
+        height,
+        radius: Math.max(textWidth, height) * 0.5,
+        color: colorScheme.bg,
+        bgColor: colorScheme.bg,
+        textColor: colorScheme.text,
+      };
+    } else {
+      const radius = Math.floor(Math.random() * 10) + 7;
+      return {
+        id: Math.random(),
+        type: 'dot',
+        text: '',
+        x,
+        y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: Math.random() * 3 + 2,
+        angle: 0,
+        vAngle: 0,
+        width: radius * 2,
+        height: radius * 2,
+        radius,
+        color: colorScheme.bg,
+      };
+    }
+  };
 
-    return {
-      id: Math.random(),
-      type: isText ? 'text' : 'dot',
-      text: '404',
-      x: spawnX !== undefined ? spawnX : Math.random() * (width - 100) + 50,
-      y: spawnY !== undefined ? spawnY : (fromTop ? -Math.random() * 400 - 40 : Math.random() * 200),
-      vx: (Math.random() - 0.5) * 3,
-      vy: Math.random() * 3 + 2,
-      rotation: (Math.random() - 0.5) * 1.2,
-      vRot: (Math.random() - 0.5) * 0.05,
-      size,
-      width: isText ? size * 2.2 : size * 2,
-      height: isText ? size : size * 2,
-      color,
-      opacity: Math.random() * 0.35 + 0.65,
-      mass: isText ? size * 0.5 : size * 0.2,
-    };
+  const resetSimulation = () => {
+    if (!canvasRef.current) return;
+    const w = window.innerWidth;
+    const count = Math.min(Math.floor(w / 28), 55);
+    const initial: PhysicsObject[] = [];
+    for (let i = 0; i < count; i++) {
+      initial.push(spawnObject(w));
+    }
+    objectsRef.current = initial;
   };
 
   useEffect(() => {
@@ -94,7 +151,7 @@ export const NotFound: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animationFrameId: number;
+    let animId: number;
     let dpr = window.devicePixelRatio || 1;
 
     const resize = () => {
@@ -111,23 +168,19 @@ export const NotFound: React.FC = () => {
     resize();
     window.addEventListener('resize', resize);
 
-    // Initial population of falling 404s
-    const initialCount = Math.min(Math.floor(window.innerWidth / 24), 65);
-    const initialBodies: PhysicsBody[] = [];
-    for (let i = 0; i < initialCount; i++) {
-      initialBodies.push(createBody(window.innerWidth, true));
-    }
-    bodiesRef.current = initialBodies;
+    // Populate initial items
+    resetSimulation();
 
     // Physics constants
-    const gravity = 0.22;
-    const drag = 0.985;
-    const bounce = 0.55;
-    const mouseRadius = 160;
+    const gravity = 0.32;
+    const airDrag = 0.988;
+    const groundBounce = 0.52;
+    const wallBounce = 0.6;
+    const mouseRadius = 150;
 
     let lastTime = performance.now();
 
-    const render = (time: number) => {
+    const loop = (time: number) => {
       const dt = Math.min((time - lastTime) / 16.66, 2);
       lastTime = time;
 
@@ -137,245 +190,302 @@ export const NotFound: React.FC = () => {
       ctx.clearRect(0, 0, w, h);
 
       const mouse = mouseRef.current;
-      const bodies = bodiesRef.current;
-
-      // Calculate mouse velocity for pushing
-      mouse.vx = mouse.x - mouse.prevX;
-      mouse.vy = mouse.y - mouse.prevY;
+      mouse.vx = (mouse.x - mouse.prevX) * 0.5;
+      mouse.vy = (mouse.y - mouse.prevY) * 0.5;
       mouse.prevX = mouse.x;
       mouse.prevY = mouse.y;
 
-      for (let i = 0; i < bodies.length; i++) {
-        const b = bodies[i];
+      const objects = objectsRef.current;
 
-        // Apply gravity & drag
-        b.vy += gravity * dt;
-        b.vx *= drag;
-        b.vy *= drag;
-        b.vRot *= 0.98;
+      for (let i = 0; i < objects.length; i++) {
+        const obj = objects[i];
 
-        // Apply position
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
-        b.rotation += b.vRot * dt;
+        if (obj.isDragging) {
+          // If being dragged, directly follow mouse with velocity
+          obj.vx = mouse.vx * 1.2;
+          obj.vy = mouse.vy * 1.2;
+          obj.vAngle = mouse.vx * 0.02;
+        } else {
+          // Apply gravity and air drag
+          obj.vy += gravity * dt;
+          obj.vx *= airDrag;
+          obj.vy *= airDrag;
+          obj.vAngle *= 0.98;
 
-        // Mouse repulsion & fling
-        const dx = b.x - mouse.x;
-        const dy = b.y - mouse.y;
-        const dist = Math.hypot(dx, dy);
+          obj.x += obj.vx * dt;
+          obj.y += obj.vy * dt;
+          obj.angle += obj.vAngle * dt;
 
-        if (dist < mouseRadius && dist > 0) {
-          const force = (1 - dist / mouseRadius) * 1.6;
-          const normalX = dx / dist;
-          const normalY = dy / dist;
+          // Mouse Repulsion Force when not dragging
+          const dx = obj.x - mouse.x;
+          const dy = obj.y - mouse.y;
+          const dist = Math.hypot(dx, dy);
 
-          // Push away from cursor + transfer mouse velocity
-          b.vx += (normalX * force * 9 + mouse.vx * 0.4) * dt;
-          b.vy += (normalY * force * 9 + mouse.vy * 0.4) * dt;
-          b.vRot += (normalX * 0.08 + (Math.random() - 0.5) * 0.04) * dt;
-        }
+          if (dist < mouseRadius && dist > 0) {
+            const force = (1 - dist / mouseRadius) * 2.2;
+            const nx = dx / dist;
+            const ny = dy / dist;
 
-        // Floor collision & stacking spread
-        const floorY = h - b.height * 0.6;
-        if (b.y > floorY) {
-          b.y = floorY;
-          b.vy = -b.vy * bounce;
-          b.vx += (Math.random() - 0.5) * 1.5; // Stacking spread
-          b.vRot *= 0.85;
+            obj.vx += (nx * force * 10 + mouse.vx * 0.6) * dt;
+            obj.vy += (ny * force * 10 + mouse.vy * 0.6) * dt;
+            obj.vAngle += (nx * 0.08 + (Math.random() - 0.5) * 0.05) * dt;
+          }
 
-          // If rested at the bottom, gently let others slide off
-          if (Math.abs(b.vy) < 0.6) {
-            b.vy = 0;
+          // Floor collision and stacking
+          const floorLimit = h - obj.height * 0.5 - 6;
+          if (obj.y > floorLimit) {
+            obj.y = floorLimit;
+            obj.vy = -obj.vy * groundBounce;
+            obj.vx += (Math.random() - 0.5) * 1.2; // slight pile scatter
+            obj.vAngle *= 0.8;
+
+            if (Math.abs(obj.vy) < 0.6) {
+              obj.vy = 0;
+            }
+          }
+
+          // Wall collision
+          const halfW = obj.width * 0.5;
+          if (obj.x < halfW) {
+            obj.x = halfW;
+            obj.vx = Math.abs(obj.vx) * wallBounce;
+          } else if (obj.x > w - halfW) {
+            obj.x = w - halfW;
+            obj.vx = -Math.abs(obj.vx) * wallBounce;
           }
         }
 
-        // Left & Right wall collisions
-        if (b.x < b.width * 0.5) {
-          b.x = b.width * 0.5;
-          b.vx = Math.abs(b.vx) * bounce;
-        } else if (b.x > w - b.width * 0.5) {
-          b.x = w - b.width * 0.5;
-          b.vx = -Math.abs(b.vx) * bounce;
-        }
-
-        // DRAW BODY
+        // ── DRAW OBJECT ──────────────────────────────────────────
         ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.rotate(b.rotation);
-        ctx.globalAlpha = b.opacity;
+        ctx.translate(obj.x, obj.y);
+        ctx.rotate(obj.angle);
 
-        if (b.type === 'text') {
-          ctx.font = `900 ${b.size}px Inter, -apple-system, sans-serif`;
+        if (obj.type === 'text404') {
+          // Editorial 404 Typography
+          ctx.font = `900 ${obj.height * 1.1}px "Inter Tight", "Inter", -apple-system, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = b.color;
-          ctx.fillText(b.text, 0, 0);
-        } else {
+          ctx.fillStyle = obj.color;
+          ctx.shadowColor = 'rgba(0,0,0,0.06)';
+          ctx.shadowBlur = 8;
+          ctx.fillText('404', 0, 0);
+        } else if (obj.type === 'badge') {
+          // Draggable Pill Badge
+          const pw = obj.width;
+          const ph = obj.height;
+          const rad = ph * 0.5;
+
+          ctx.shadowColor = 'rgba(0,0,0,0.12)';
+          ctx.shadowBlur = 12;
+          ctx.shadowOffsetY = 4;
+
           ctx.beginPath();
-          ctx.arc(0, 0, b.size, 0, Math.PI * 2);
-          ctx.fillStyle = b.color;
+          ctx.roundRect(-pw * 0.5, -ph * 0.5, pw, ph, rad);
+          ctx.fillStyle = obj.bgColor || '#1D1D1F';
+          ctx.fill();
+
+          ctx.shadowColor = 'transparent';
+          ctx.font = `800 12px "Inter", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = obj.textColor || '#FFFFFF';
+          ctx.letterSpacing = '1px';
+          ctx.fillText(obj.text, 0, 1);
+        } else if (obj.type === 'dot') {
+          // Geometric Color Dot
+          ctx.shadowColor = 'rgba(0,0,0,0.08)';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(0, 0, obj.radius, 0, Math.PI * 2);
+          ctx.fillStyle = obj.color;
           ctx.fill();
         }
 
         ctx.restore();
       }
 
-      animationFrameId = requestAnimationFrame(render);
+      animId = requestAnimationFrame(loop);
     };
 
-    animationFrameId = requestAnimationFrame(render);
+    animId = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener('resize', resize);
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(animId);
     };
   }, []);
 
-  // Track mouse movement
+  // ── Drag & Drop / Physics Interactivity ────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    mouseRef.current.isDown = true;
+    mouseRef.current.x = clickX;
+    mouseRef.current.y = clickY;
+
+    // Check if clicked an object (reverse order for top-most)
+    const objects = objectsRef.current;
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const obj = objects[i];
+      const dx = clickX - obj.x;
+      const dy = clickY - obj.y;
+      if (Math.hypot(dx, dy) < obj.radius * 1.1) {
+        obj.isDragging = true;
+        draggedObjRef.current = { obj, offsetX: dx, offsetY: dy };
+        break;
+      }
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    mouseRef.current.x = e.clientX;
-    mouseRef.current.y = e.clientY;
-    mouseRef.current.isMoving = true;
-  };
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-  const handleMouseLeave = () => {
-    mouseRef.current.x = -1000;
-    mouseRef.current.y = -1000;
-  };
+    mouseRef.current.x = x;
+    mouseRef.current.y = y;
 
-  // Click anywhere on canvas to burst new 404s!
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const clickX = e.clientX;
-    const clickY = e.clientY;
-
-    // Spawn 5 extra 404 particles radiating outwards
-    const newBodies: PhysicsBody[] = [];
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI * 2 * i) / 6;
-      const speed = Math.random() * 8 + 6;
-      const body = createBody(window.innerWidth, false, clickX, clickY);
-      body.vx = Math.cos(angle) * speed;
-      body.vy = Math.sin(angle) * speed - 4;
-      body.vRot = (Math.random() - 0.5) * 0.3;
-      newBodies.push(body);
+    if (draggedObjRef.current) {
+      draggedObjRef.current.obj.x = x - draggedObjRef.current.offsetX;
+      draggedObjRef.current.obj.y = y - draggedObjRef.current.offsetY;
     }
-
-    bodiesRef.current = [...bodiesRef.current, ...newBodies];
   };
 
-  // Function to drop a wave of 15 more 404s
-  const dropMore404s = (e: React.MouseEvent) => {
+  const handleMouseUp = () => {
+    mouseRef.current.isDown = false;
+    if (draggedObjRef.current) {
+      draggedObjRef.current.obj.isDragging = false;
+      draggedObjRef.current = null;
+    }
+  };
+
+  // Add 10 more falling elements
+  const addMoreBodies = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newBodies: PhysicsBody[] = [];
-    for (let i = 0; i < 16; i++) {
-      newBodies.push(createBody(window.innerWidth, true));
+    const w = window.innerWidth;
+    const newItems: PhysicsObject[] = [];
+    for (let i = 0; i < 12; i++) {
+      newItems.push(spawnObject(w));
     }
-    bodiesRef.current = [...bodiesRef.current, ...newBodies];
+    objectsRef.current = [...objectsRef.current, ...newItems];
   };
-
-  const popularTools = [
-    { label: isEnglish ? 'Compress Image' : 'Görsel Sıkıştır', path: `${basePath}/compress`, icon: <Minimize2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Format Convert' : 'Format Dönüştür', path: `${basePath}/convert`, icon: <RefreshCw size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Resize Image' : 'Boyutlandır', path: `${basePath}/resize`, icon: <Maximize2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü', path: `${basePath}/photo-editor`, icon: <Wand2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Color Palette' : 'Renk Paleti', path: `${basePath}/color-palette`, icon: <Palette size={13} strokeWidth={2.2} /> },
-    { label: 'SVG Optimizer', path: `${basePath}/svg-optimize`, icon: <Code2 size={13} strokeWidth={2.2} /> },
-  ];
 
   return (
     <div
       ref={containerRef}
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      className="relative w-full min-h-[calc(100vh-110px)] flex flex-col items-center justify-center overflow-hidden cursor-default select-none"
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      className="relative w-full h-[calc(100vh-80px)] min-h-[620px] overflow-hidden select-none bg-[#FAF9F7]"
     >
-      {/* ── FULL-SCREEN PHYSICS CANVAS ─────────────────────────────── */}
+      {/* ── FULL CANVAS PHYSICS SIMULATION ─────────────────────────── */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+        className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing z-0"
       />
 
-      {/* ── FLOATING GLASS OVERLAY CARD (INTERACTIVE & CLEAN) ──────── */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative z-10 max-w-xl mx-4 my-auto p-8 sm:p-10 rounded-[36px] bg-white/90 backdrop-blur-2xl border border-white/95 shadow-[0_24px_70px_rgba(250,125,168,0.18),0_12px_32px_rgba(184,150,223,0.15)] text-center"
-      >
-        {/* Top Floating Badge */}
-        <div className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full text-[12.5px] font-bold text-zinc-700 bg-white border border-gray-200/80 shadow-sm">
-          <Sparkles size={14} className="text-[#FA7DA8] animate-spin" style={{ animationDuration: '4s' }} />
-          <span className="bg-gradient-to-r from-[#FA7DA8] via-[#B896DF] to-[#86B3F0] bg-clip-text text-transparent font-extrabold uppercase tracking-wider text-[11px]">
-            {isEnglish ? 'Interactive 404 Physics' : 'Etkileşimli 404 Yağmuru'}
+      {/* ── AWWWARDS-STYLE FLOATING HUD TOP BAR ────────────────────── */}
+      <div className="absolute top-6 inset-x-0 px-6 sm:px-12 flex items-center justify-between pointer-events-none z-20">
+        
+        {/* Left: Status Pill */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-black/10 shadow-sm pointer-events-auto">
+          <span className="w-2 h-2 rounded-full bg-[#FA7DA8] animate-ping" />
+          <span className="text-[12px] font-extrabold uppercase tracking-wider text-black">
+            {isEnglish ? 'Physics 404 Playground' : 'Fizik 404 Deneyim Alanı'}
           </span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
 
-        {/* Big Gradient Title */}
-        <h1 className="text-3xl sm:text-4xl font-black text-[#1D1D1F] tracking-tight mb-3">
-          {isEnglish ? 'Oops! Page got scattered.' : 'Ooops! Sayfa darmadağın oldu.'}
-        </h1>
-
-        <p className="text-[15px] sm:text-[16px] text-[#6E6E73] font-medium leading-relaxed mb-8 max-w-md mx-auto">
-          {isEnglish
-            ? 'Move your mouse to scatter the falling 404s, or click anywhere on the screen to spawn a new explosion!'
-            : 'Fareni gezdirerek düşen 404\'leri dağıtabilir veya ekrana tıklayarak yeni 404 patlamaları yaratabilirsin!'}
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3.5 mb-8">
-          <Link
-            to={basePath || '/'}
-            className="group relative inline-flex items-center gap-2 px-7 py-3 rounded-full text-[14.5px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-lg shadow-black/15 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98] transition-all"
-          >
-            <HomeIcon size={16} strokeWidth={2.2} />
-            <span>{isEnglish ? 'Back to Home' : 'Ana Sayfaya Dön'}</span>
-          </Link>
-
+        {/* Right: Controls (Spawn + Reset) */}
+        <div className="flex items-center gap-2 pointer-events-auto">
           <button
-            onClick={dropMore404s}
-            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-full text-[14px] font-bold text-white bg-gradient-to-r from-[#FA7DA8] via-[#B896DF] to-[#86B3F0] hover:opacity-95 shadow-md hover:shadow-lg hover:scale-[1.03] active:scale-[0.98] transition-all"
+            onClick={addMoreBodies}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/90 hover:bg-white text-black text-[12px] font-bold border border-black/10 shadow-sm hover:scale-105 active:scale-95 transition-all"
           >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>{isEnglish ? 'Drop More 404s' : 'Daha Çok 404 Yağdır!'}</span>
+            <Plus size={14} strokeWidth={2.5} className="text-[#FA7DA8]" />
+            <span>{isEnglish ? 'Drop 404s' : '404 Ekle'}</span>
           </button>
 
           <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-bold text-zinc-700 bg-white hover:bg-gray-50 border border-gray-200/90 shadow-sm hover:shadow hover:scale-[1.03] active:scale-[0.98] transition-all"
+            onClick={resetSimulation}
+            title={isEnglish ? 'Reset Canvas' : 'Yeniden Başlat'}
+            className="p-2 rounded-full bg-white/90 hover:bg-white text-black border border-black/10 shadow-sm hover:scale-105 active:scale-95 transition-all"
           >
-            <ArrowLeft size={15} strokeWidth={2.2} />
-            <span>{isEnglish ? 'Go Back' : 'Geri Dön'}</span>
+            <RotateCcw size={13} strokeWidth={2.2} />
           </button>
         </div>
+      </div>
 
-        {/* Quick Tools Directory */}
-        <div className="pt-6 border-t border-gray-100">
-          <div className="text-[11.5px] font-bold uppercase tracking-wider text-zinc-400 mb-3">
-            {isEnglish ? 'Popular Tools' : 'Hemen Kullanabileceğin Popüler Araçlar'}
+      {/* ── EDITORIAL CENTER CONTENT (DEPO STUDIO INSPIRED) ────────── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 pointer-events-none z-10">
+        
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-2xl mx-auto"
+        >
+          {/* Subtle Tag */}
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-black text-white text-[11px] font-extrabold uppercase tracking-widest mb-4 shadow-sm">
+            <Compass size={12} className="text-[#FA7DA8] animate-spin" style={{ animationDuration: '6s' }} />
+            <span>404 NOT FOUND</span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {popularTools.map((tool) => (
-              <Link
-                key={tool.path}
-                to={tool.path}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold text-zinc-700 bg-gray-50 hover:bg-white hover:text-brand-purple border border-gray-200/70 hover:border-purple-200 shadow-sm hover:shadow transition-all"
-              >
-                <span className="text-zinc-400">{tool.icon}</span>
-                <span>{tool.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </motion.div>
+          {/* Huge Brutalist / Editorial Headline */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter text-[#1D1D1F] leading-[0.98] mb-4">
+            {isEnglish ? (
+              <>
+                EVERYTHING HAS<br />
+                <span className="text-[#FA7DA8]">FALLEN APART.</span>
+              </>
+            ) : (
+              <>
+                HER ŞEY<br />
+                <span className="text-[#FA7DA8]">YERLE BİR OLDU.</span>
+              </>
+            )}
+          </h1>
 
-      {/* Bottom Floating Interactive Hint */}
-      <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none z-10">
-        <div className="px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-gray-200/80 text-[12px] font-bold text-zinc-600 shadow-sm">
-          💡 {isEnglish ? 'Tip: Move cursor to push 404s • Click anywhere to burst' : 'İpucu: Fareyi gezdirerek 404\'leri it • Ekrana tıklayarak patlat'}
+          <p className="text-[15px] sm:text-[17px] text-zinc-600 font-medium max-w-md mx-auto mb-8 leading-snug">
+            {isEnglish
+              ? 'Grab & fling the falling blocks or head back to create something extraordinary.'
+              : 'Düşen blokları farenle tutup fırlatabilir veya hemen ana sayfaya dönüp görsellerini işleyebilirsin.'}
+          </p>
+
+          {/* Bold Primary Actions */}
+          <div className="flex flex-wrap items-center justify-center gap-3.5 pointer-events-auto">
+            <Link
+              to={basePath || '/'}
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-[14.5px] font-black text-white bg-[#1D1D1F] hover:bg-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+            >
+              <HomeIcon size={16} strokeWidth={2.4} />
+              <span>{isEnglish ? 'RETURN TO HOME' : 'ANA SAYFAYA DÖN'}</span>
+            </Link>
+
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[14.5px] font-black text-[#1D1D1F] bg-white hover:bg-zinc-100 border-2 border-[#1D1D1F] shadow-sm hover:scale-105 active:scale-95 transition-all"
+            >
+              <ArrowLeft size={16} strokeWidth={2.4} />
+              <span>{isEnglish ? 'GO BACK' : 'GERİ DÖN'}</span>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── BOTTOM INTERACTION HELPER ──────────────────────────────── */}
+      <div className="absolute bottom-6 inset-x-0 flex justify-center pointer-events-none z-20">
+        <div className="px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-black/10 text-[11.5px] font-bold text-zinc-600 shadow-sm flex items-center gap-2">
+          <span>🖐️</span>
+          <span>
+            {isEnglish
+              ? 'Drag & toss any 404 element or badge with your mouse!'
+              : 'İstediğin 404 yazısını veya butonu farenle tutup fırlatabilirsin!'}
+          </span>
         </div>
       </div>
     </div>
