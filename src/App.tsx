@@ -31,30 +31,6 @@ function ScrollToTop() {
   return null;
 }
 
-function LangWrapper() {
-  const { pathname } = useLocation();
-  const { i18n } = useTranslation();
-
-  useEffect(() => {
-    const isEn = pathname.startsWith('/en');
-    const resolvedLang = isEn ? 'en' : 'tr';
-    if (i18n.language !== resolvedLang) {
-      i18n.changeLanguage(resolvedLang);
-    }
-  }, [pathname, i18n]);
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <MeshBackground />
-      <Navbar />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
-  );
-}
-
 const toolRoutes = [
   { path: 'compress', element: <CompressTool /> },
   { path: 'resize', element: <ResizeTool /> },
@@ -71,6 +47,40 @@ const toolRoutes = [
   { path: 'color-palette', element: <ColorPaletteTool /> },
   { path: 'photo-editor', element: <PhotoEditorTool /> },
 ];
+
+const validPaths = new Set([
+  '/', '/en',
+  ...toolRoutes.map((r) => `/${r.path}`),
+  ...toolRoutes.map((r) => `/en/${r.path}`),
+]);
+
+function LangWrapper() {
+  const { pathname } = useLocation();
+  const { i18n } = useTranslation();
+
+  const cleanPath = pathname.replace(/\/$/, '') || '/';
+  const is404 = !validPaths.has(cleanPath);
+
+  useEffect(() => {
+    const isEn = pathname.startsWith('/en');
+    const resolvedLang = isEn ? 'en' : 'tr';
+    if (i18n.language !== resolvedLang) {
+      i18n.changeLanguage(resolvedLang);
+    }
+  }, [pathname, i18n]);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <MeshBackground />
+      <Navbar />
+      <main className="flex-1 flex flex-col">
+        <Outlet />
+      </main>
+      {!is404 && <Footer />}
+    </div>
+  );
+}
+
 
 export default function App() {
   return (
