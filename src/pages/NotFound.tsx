@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Home as HomeIcon,
   ArrowLeft,
@@ -12,11 +12,35 @@ import {
   Wand2,
   Palette,
   Code2,
-  Crop,
-  Layers,
-  Aperture,
-  Compass
+  Plus
 } from 'lucide-react';
+
+interface PhysicsBody {
+  id: number;
+  type: 'text' | 'dot';
+  text: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  rotation: number;
+  vRot: number;
+  size: number;
+  width: number;
+  height: number;
+  color: string;
+  opacity: number;
+  mass: number;
+}
+
+const BRAND_COLORS = [
+  '#FA7DA8', // Brand Coral Pink
+  '#B896DF', // Brand Purple
+  '#86B3F0', // Brand Sky Blue
+  '#E879F9', // Brand Fuchsia
+  '#F43F5E', // Brand Rose
+  '#7B8BFF', // Brand Indigo
+];
 
 export const NotFound: React.FC = () => {
   const { i18n } = useTranslation();
@@ -24,340 +48,335 @@ export const NotFound: React.FC = () => {
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
 
-  // ── 3D Smooth Mouse Parallax Physics ──────────────────────────────
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const bodiesRef = useRef<PhysicsBody[]>([]);
+  const mouseRef = useRef<{ x: number; y: number; isMoving: boolean; prevX: number; prevY: number; vx: number; vy: number }>({
+    x: -1000,
+    y: -1000,
+    isMoving: false,
+    prevX: 0,
+    prevY: 0,
+    vx: 0,
+    vy: 0,
+  });
 
-  const springConfig = { damping: 25, stiffness: 120 };
-  const smoothMouseX = useSpring(mouseX, springConfig);
-  const smoothMouseY = useSpring(mouseY, springConfig);
 
-  const rotateX = useTransform(smoothMouseY, [-0.5, 0.5], [18, -18]);
-  const rotateY = useTransform(smoothMouseX, [-0.5, 0.5], [-22, 22]);
-  const lightX = useTransform(smoothMouseX, [-0.5, 0.5], [20, 80]);
-  const lightY = useTransform(smoothMouseY, [-0.5, 0.5], [20, 80]);
 
-  // Handle subtle mouse movement
+  // Helper to spawn a single falling 404 or dot
+  const createBody = (width: number, fromTop = true, spawnX?: number, spawnY?: number): PhysicsBody => {
+    const isText = Math.random() > 0.18; // 82% 404 text, 18% circular dots
+    const size = isText ? Math.floor(Math.random() * 32) + 36 : Math.floor(Math.random() * 12) + 8;
+    const color = BRAND_COLORS[Math.floor(Math.random() * BRAND_COLORS.length)];
+
+    return {
+      id: Math.random(),
+      type: isText ? 'text' : 'dot',
+      text: '404',
+      x: spawnX !== undefined ? spawnX : Math.random() * (width - 100) + 50,
+      y: spawnY !== undefined ? spawnY : (fromTop ? -Math.random() * 400 - 40 : Math.random() * 200),
+      vx: (Math.random() - 0.5) * 3,
+      vy: Math.random() * 3 + 2,
+      rotation: (Math.random() - 0.5) * 1.2,
+      vRot: (Math.random() - 0.5) * 0.05,
+      size,
+      width: isText ? size * 2.2 : size * 2,
+      height: isText ? size : size * 2,
+      color,
+      opacity: Math.random() * 0.35 + 0.65,
+      mass: isText ? size * 0.5 : size * 0.2,
+    };
+  };
+
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const { innerWidth, innerHeight } = window;
-      mouseX.set((e.clientX / innerWidth) - 0.5);
-      mouseY.set((e.clientY / innerHeight) - 0.5);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let dpr = window.devicePixelRatio || 1;
+
+    const resize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.scale(dpr, dpr);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY]);
+    resize();
+    window.addEventListener('resize', resize);
 
-  // ── Starlight Particles ───────────────────────────────────────────
-  const stars = [
-    { top: '12%', left: '18%', size: 4, delay: 0, dur: 3 },
-    { top: '22%', left: '82%', size: 6, delay: 1, dur: 4 },
-    { top: '68%', left: '14%', size: 5, delay: 2, dur: 3.5 },
-    { top: '75%', left: '88%', size: 3, delay: 0.5, dur: 2.8 },
-    { top: '35%', left: '8%', size: 4, delay: 1.5, dur: 4.2 },
-    { top: '80%', left: '42%', size: 5, delay: 2.2, dur: 3.2 },
-    { top: '15%', left: '60%', size: 3, delay: 0.8, dur: 3.8 },
-  ];
+    // Initial population of falling 404s
+    const initialCount = Math.min(Math.floor(window.innerWidth / 24), 65);
+    const initialBodies: PhysicsBody[] = [];
+    for (let i = 0; i < initialCount; i++) {
+      initialBodies.push(createBody(window.innerWidth, true));
+    }
+    bodiesRef.current = initialBodies;
+
+    // Physics constants
+    const gravity = 0.22;
+    const drag = 0.985;
+    const bounce = 0.55;
+    const mouseRadius = 160;
+
+    let lastTime = performance.now();
+
+    const render = (time: number) => {
+      const dt = Math.min((time - lastTime) / 16.66, 2);
+      lastTime = time;
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const mouse = mouseRef.current;
+      const bodies = bodiesRef.current;
+
+      // Calculate mouse velocity for pushing
+      mouse.vx = mouse.x - mouse.prevX;
+      mouse.vy = mouse.y - mouse.prevY;
+      mouse.prevX = mouse.x;
+      mouse.prevY = mouse.y;
+
+      for (let i = 0; i < bodies.length; i++) {
+        const b = bodies[i];
+
+        // Apply gravity & drag
+        b.vy += gravity * dt;
+        b.vx *= drag;
+        b.vy *= drag;
+        b.vRot *= 0.98;
+
+        // Apply position
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.rotation += b.vRot * dt;
+
+        // Mouse repulsion & fling
+        const dx = b.x - mouse.x;
+        const dy = b.y - mouse.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < mouseRadius && dist > 0) {
+          const force = (1 - dist / mouseRadius) * 1.6;
+          const normalX = dx / dist;
+          const normalY = dy / dist;
+
+          // Push away from cursor + transfer mouse velocity
+          b.vx += (normalX * force * 9 + mouse.vx * 0.4) * dt;
+          b.vy += (normalY * force * 9 + mouse.vy * 0.4) * dt;
+          b.vRot += (normalX * 0.08 + (Math.random() - 0.5) * 0.04) * dt;
+        }
+
+        // Floor collision & stacking spread
+        const floorY = h - b.height * 0.6;
+        if (b.y > floorY) {
+          b.y = floorY;
+          b.vy = -b.vy * bounce;
+          b.vx += (Math.random() - 0.5) * 1.5; // Stacking spread
+          b.vRot *= 0.85;
+
+          // If rested at the bottom, gently let others slide off
+          if (Math.abs(b.vy) < 0.6) {
+            b.vy = 0;
+          }
+        }
+
+        // Left & Right wall collisions
+        if (b.x < b.width * 0.5) {
+          b.x = b.width * 0.5;
+          b.vx = Math.abs(b.vx) * bounce;
+        } else if (b.x > w - b.width * 0.5) {
+          b.x = w - b.width * 0.5;
+          b.vx = -Math.abs(b.vx) * bounce;
+        }
+
+        // DRAW BODY
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rotation);
+        ctx.globalAlpha = b.opacity;
+
+        if (b.type === 'text') {
+          ctx.font = `900 ${b.size}px Inter, -apple-system, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = b.color;
+          ctx.fillText(b.text, 0, 0);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, b.size, 0, Math.PI * 2);
+          ctx.fillStyle = b.color;
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  // Track mouse movement
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    mouseRef.current.x = e.clientX;
+    mouseRef.current.y = e.clientY;
+    mouseRef.current.isMoving = true;
+  };
+
+  const handleMouseLeave = () => {
+    mouseRef.current.x = -1000;
+    mouseRef.current.y = -1000;
+  };
+
+  // Click anywhere on canvas to burst new 404s!
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const clickX = e.clientX;
+    const clickY = e.clientY;
+
+    // Spawn 5 extra 404 particles radiating outwards
+    const newBodies: PhysicsBody[] = [];
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6;
+      const speed = Math.random() * 8 + 6;
+      const body = createBody(window.innerWidth, false, clickX, clickY);
+      body.vx = Math.cos(angle) * speed;
+      body.vy = Math.sin(angle) * speed - 4;
+      body.vRot = (Math.random() - 0.5) * 0.3;
+      newBodies.push(body);
+    }
+
+    bodiesRef.current = [...bodiesRef.current, ...newBodies];
+  };
+
+  // Function to drop a wave of 15 more 404s
+  const dropMore404s = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newBodies: PhysicsBody[] = [];
+    for (let i = 0; i < 16; i++) {
+      newBodies.push(createBody(window.innerWidth, true));
+    }
+    bodiesRef.current = [...bodiesRef.current, ...newBodies];
+  };
 
   const popularTools = [
-    { label: isEnglish ? 'Compress' : 'Sıkıştır', path: `${basePath}/compress`, icon: <Minimize2 size={13} strokeWidth={2.2} />, color: 'hover:border-blue-300 hover:text-blue-600' },
-    { label: isEnglish ? 'Convert' : 'Dönüştür', path: `${basePath}/convert`, icon: <RefreshCw size={13} strokeWidth={2.2} />, color: 'hover:border-cyan-300 hover:text-cyan-600' },
-    { label: isEnglish ? 'Resize' : 'Boyutlandır', path: `${basePath}/resize`, icon: <Maximize2 size={13} strokeWidth={2.2} />, color: 'hover:border-violet-300 hover:text-violet-600' },
-    { label: isEnglish ? 'Editor' : 'Editör', path: `${basePath}/photo-editor`, icon: <Wand2 size={13} strokeWidth={2.2} />, color: 'hover:border-fuchsia-300 hover:text-fuchsia-600' },
-    { label: isEnglish ? 'Palette' : 'Palet', path: `${basePath}/color-palette`, icon: <Palette size={13} strokeWidth={2.2} />, color: 'hover:border-pink-300 hover:text-pink-600' },
-    { label: 'SVG', path: `${basePath}/svg-optimize`, icon: <Code2 size={13} strokeWidth={2.2} />, color: 'hover:border-emerald-300 hover:text-emerald-600' },
+    { label: isEnglish ? 'Compress Image' : 'Görsel Sıkıştır', path: `${basePath}/compress`, icon: <Minimize2 size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Format Convert' : 'Format Dönüştür', path: `${basePath}/convert`, icon: <RefreshCw size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Resize Image' : 'Boyutlandır', path: `${basePath}/resize`, icon: <Maximize2 size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü', path: `${basePath}/photo-editor`, icon: <Wand2 size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Color Palette' : 'Renk Paleti', path: `${basePath}/color-palette`, icon: <Palette size={13} strokeWidth={2.2} /> },
+    { label: 'SVG Optimizer', path: `${basePath}/svg-optimize`, icon: <Code2 size={13} strokeWidth={2.2} /> },
   ];
 
   return (
-    <div className="w-full min-h-[calc(100vh-120px)] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 py-10 relative overflow-hidden select-none">
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+      className="relative w-full min-h-[calc(100vh-110px)] flex flex-col items-center justify-center overflow-hidden cursor-default select-none"
+    >
+      {/* ── FULL-SCREEN PHYSICS CANVAS ─────────────────────────────── */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      />
 
-      {/* ── COSMIC AURORA AMBIENT GLOWS ────────────────────────────── */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[550px] bg-gradient-to-tr from-[#86B3F0]/30 via-[#B896DF]/30 to-[#FA7DA8]/35 rounded-full blur-[110px] pointer-events-none -z-10 animate-pulse" />
-      <div className="absolute top-1/4 left-1/3 w-[350px] h-[350px] bg-cyan-400/15 rounded-full blur-[90px] pointer-events-none -z-10" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-pink-500/20 rounded-full blur-[100px] pointer-events-none -z-10" />
-
-      {/* Floating Starlight Particles */}
-      {stars.map((s, idx) => (
-        <motion.div
-          key={idx}
-          animate={{
-            scale: [1, 1.8, 1],
-            opacity: [0.3, 0.9, 0.3],
-            rotate: [0, 90, 180],
-          }}
-          transition={{
-            duration: s.dur,
-            repeat: Infinity,
-            delay: s.delay,
-            ease: 'easeInOut',
-          }}
-          style={{
-            top: s.top,
-            left: s.left,
-            width: s.size,
-            height: s.size,
-          }}
-          className="absolute rounded-full bg-gradient-to-tr from-white to-purple-200 shadow-[0_0_8px_rgba(184,150,223,0.8)] pointer-events-none"
-        />
-      ))}
-
-      {/* ── MAIN CONTENT WRAPPER ──────────────────────────────────── */}
-      <div className="w-full max-w-3xl mx-auto flex flex-col items-center text-center relative z-10">
-
-        {/* Floating Futuristic Badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: -16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full text-[12.5px] font-bold text-zinc-700 bg-white/85 border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-xl"
-        >
-          <Compass size={14} className="text-purple-600 animate-spin" style={{ animationDuration: '6s' }} />
-          <span className="tracking-wide uppercase text-[11px] bg-gradient-to-r from-[#86B3F0] via-[#B896DF] to-[#FA7DA8] bg-clip-text text-transparent font-extrabold">
-            {isEnglish ? 'Dimension Error · 404' : 'Boyut Sapması · 404'}
+      {/* ── FLOATING GLASS OVERLAY CARD (INTERACTIVE & CLEAN) ──────── */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative z-10 max-w-xl mx-4 my-auto p-8 sm:p-10 rounded-[36px] bg-white/90 backdrop-blur-2xl border border-white/95 shadow-[0_24px_70px_rgba(250,125,168,0.18),0_12px_32px_rgba(184,150,223,0.15)] text-center"
+      >
+        {/* Top Floating Badge */}
+        <div className="inline-flex items-center gap-2 mb-5 px-4 py-1.5 rounded-full text-[12.5px] font-bold text-zinc-700 bg-white border border-gray-200/80 shadow-sm">
+          <Sparkles size={14} className="text-[#FA7DA8] animate-spin" style={{ animationDuration: '4s' }} />
+          <span className="bg-gradient-to-r from-[#FA7DA8] via-[#B896DF] to-[#86B3F0] bg-clip-text text-transparent font-extrabold uppercase tracking-wider text-[11px]">
+            {isEnglish ? 'Interactive 404 Physics' : 'Etkileşimli 404 Yağmuru'}
           </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-        </motion.div>
-
-        {/* ── 3D HOLOGRAPHIC PARALLAX CENTERPIECE ─────────────────── */}
-        <div style={{ perspective: 1100 }} className="relative py-2 sm:py-4">
-          <motion.div
-            style={{
-              rotateX,
-              rotateY,
-              transformStyle: 'preserve-3d',
-            }}
-            className="relative cursor-grab active:cursor-grabbing"
-          >
-            {/* 1. Orbiting Cosmic Ring */}
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
-              className="absolute -inset-10 sm:-inset-14 rounded-full border border-dashed border-purple-300/40 pointer-events-none"
-            >
-              <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#86B3F0] to-[#B896DF] absolute -top-2 left-1/2 -translate-x-1/2 shadow-lg shadow-purple-500/50 flex items-center justify-center">
-                <div className="w-1.5 h-1.5 rounded-full bg-white" />
-              </div>
-              <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#FA7DA8] to-purple-400 absolute -bottom-1.5 left-1/3 shadow-md shadow-pink-500/50" />
-            </motion.div>
-
-            {/* 2. Floating Satellite Polaroid / Layer Card */}
-            <motion.div
-              animate={{
-                y: [0, -16, 0],
-                rotate: [-6, 2, -6],
-              }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ transform: 'translateZ(60px)' }}
-              className="absolute -top-7 -left-6 sm:-left-12 z-30 w-24 sm:w-28 p-2 rounded-2xl bg-white/95 backdrop-blur-xl border border-white shadow-[0_12px_32px_rgba(0,0,0,0.12)] hidden sm:block"
-            >
-              <div className="w-full h-14 sm:h-16 rounded-xl bg-gradient-to-br from-[#86B3F0] via-[#B896DF] to-[#FA7DA8] flex items-center justify-center relative overflow-hidden">
-                <motion.div
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                  className="w-10 h-10 rounded-full border-2 border-white/60 border-t-white flex items-center justify-center"
-                >
-                  <Sparkles size={14} className="text-white" />
-                </motion.div>
-                <div className="absolute bottom-1 right-1.5 px-1 py-0.5 rounded bg-black/40 text-[8px] font-bold text-white tracking-widest">
-                  8K RAW
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-1.5 px-0.5">
-                <span className="text-[9px] font-bold text-zinc-600">Lost.png</span>
-                <span className="text-[8px] font-semibold text-purple-500">0 KB</span>
-              </div>
-            </motion.div>
-
-            {/* 3. Floating 3D Animated Paper Airplane */}
-            <motion.div
-              animate={{
-                x: [-15, 25, -15],
-                y: [-12, -30, -12],
-                rotate: [15, 28, 15],
-              }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ transform: 'translateZ(90px)' }}
-              className="absolute -top-6 -right-6 sm:-right-12 z-30"
-            >
-              <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-3xl bg-white/95 backdrop-blur-xl border border-white shadow-[0_16px_36px_rgba(184,150,223,0.35)] flex items-center justify-center p-3">
-                <svg viewBox="0 0 24 24" className="w-full h-full transform -rotate-12 filter drop-shadow">
-                  <path d="M22 2L11 13" stroke="url(#hero-plane-grad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M22 2L15 22L11 13L2 9L22 2Z" fill="url(#hero-plane-grad)" stroke="url(#hero-plane-grad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <defs>
-                    <linearGradient id="hero-plane-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#86B3F0"/>
-                      <stop offset="0.5" stopColor="#B896DF"/>
-                      <stop offset="1" stopColor="#FA7DA8"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </motion.div>
-
-            {/* 4. Centerpiece Glass Portal Card */}
-            <motion.div
-              style={{
-                transform: 'translateZ(30px)',
-              }}
-              className="relative w-[300px] sm:w-[440px] h-[190px] sm:h-[240px] rounded-[38px] bg-white/80 backdrop-blur-2xl border-2 border-white/95 shadow-[0_24px_64px_rgba(134,179,240,0.22),0_12px_24px_rgba(250,125,168,0.15)] flex items-center justify-center overflow-hidden p-6"
-            >
-              {/* Dynamic Specular Sheen reacting to Mouse */}
-              <motion.div
-                style={{
-                  left: lightX,
-                  top: lightY,
-                  transform: 'translate(-50%, -50%)',
-                }}
-                className="absolute w-[280px] h-[280px] rounded-full bg-gradient-to-tr from-white/70 via-purple-300/20 to-transparent blur-2xl pointer-events-none"
-              />
-
-              {/* Viewfinder Animated Crop Frame / Marquee Lines */}
-              <div className="absolute inset-4 sm:inset-5 rounded-2xl border border-dashed border-purple-300/50 pointer-events-none">
-                <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-purple-500 rounded-sm shadow-sm" />
-                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-purple-500 rounded-sm shadow-sm" />
-                <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-purple-500 rounded-sm shadow-sm" />
-                <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-purple-500 rounded-sm shadow-sm" />
-                <div className="absolute top-2 left-3 flex items-center gap-1.5 text-[9px] font-bold text-purple-400 tracking-wider">
-                  <Crop size={10} strokeWidth={2.5} />
-                  <span>FRAME 404</span>
-                </div>
-              </div>
-
-              {/* 404 Hologram Numbers */}
-              <div className="relative z-10 flex items-center justify-center gap-2 sm:gap-4 select-none">
-                
-                {/* First '4' */}
-                <span className="text-[88px] sm:text-[130px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-b from-[#7B8BFF] via-[#B896DF] to-[#FA7DA8] filter drop-shadow-[0_8px_16px_rgba(184,150,223,0.3)]">
-                  4
-                </span>
-
-                {/* Center Animated Aperture Hologram as '0' */}
-                <div className="relative w-20 sm:w-30 h-20 sm:h-30 flex items-center justify-center">
-                  {/* Outer Glowing Pulsing Disk */}
-                  <motion.div
-                    animate={{ scale: [1, 1.12, 1], rotate: [0, 180, 360] }}
-                    transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
-                    className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#86B3F0] via-[#B896DF] to-[#FA7DA8] opacity-80 blur-[2px] p-1"
-                  >
-                    <div className="w-full h-full rounded-full bg-white/80 backdrop-blur-md" />
-                  </motion.div>
-
-                  {/* Inner Rotating Aperture Blade */}
-                  <motion.div
-                    animate={{ rotate: -360 }}
-                    transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-                    className="relative z-10 w-14 sm:w-20 h-14 sm:h-20 rounded-full bg-gradient-to-br from-white via-purple-50 to-pink-50 border-2 border-white shadow-xl flex items-center justify-center"
-                  >
-                    <Aperture size={32} className="text-[#B896DF] animate-pulse sm:w-10 sm:h-10" strokeWidth={1.8} />
-                  </motion.div>
-
-                  {/* Central Cosmic Sparkle */}
-                  <div className="absolute z-20 w-3 h-3 rounded-full bg-white shadow-[0_0_12px_#fff]" />
-                </div>
-
-                {/* Second '4' */}
-                <span className="text-[88px] sm:text-[130px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-b from-[#7B8BFF] via-[#B896DF] to-[#FA7DA8] filter drop-shadow-[0_8px_16px_rgba(184,150,223,0.3)]">
-                  4
-                </span>
-              </div>
-
-              {/* Subtle Bottom Glow Badge */}
-              <div className="absolute bottom-2 inset-x-0 flex justify-center">
-                <div className="px-3 py-0.5 rounded-full bg-purple-50/90 border border-purple-100/80 text-[10px] sm:text-[11px] font-bold text-purple-600 flex items-center gap-1.5 shadow-sm">
-                  <Layers size={11} />
-                  <span>{isEnglish ? 'Pixel Not Found in Buffer' : 'Piksel Havuzunda Bulunamadı'}</span>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* 5. Floating Color Swatches Satellite */}
-            <motion.div
-              animate={{
-                y: [0, 14, 0],
-                rotate: [4, -4, 4],
-              }}
-              transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ transform: 'translateZ(70px)' }}
-              className="absolute -bottom-4 -left-4 sm:-left-8 z-30 hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/95 backdrop-blur-xl border border-white shadow-xl"
-            >
-              <div className="w-3.5 h-3.5 rounded-full bg-[#86B3F0] shadow-sm" />
-              <div className="w-3.5 h-3.5 rounded-full bg-[#B896DF] shadow-sm" />
-              <div className="w-3.5 h-3.5 rounded-full bg-[#FA7DA8] shadow-sm" />
-              <span className="text-[10px] font-bold text-zinc-600 ml-1">#404040</span>
-            </motion.div>
-
-          </motion.div>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
 
-        {/* ── PUNCHY TYPOGRAPHY ───────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="mt-8 max-w-lg"
-        >
-          <h1 className="text-3xl sm:text-4xl font-black text-[#1D1D1F] tracking-tight mb-3">
-            {isEnglish ? 'Lost in the Creative Cosmos?' : 'Evrende Kaybolan Pikseller...'}
-          </h1>
-          <p className="text-[15px] sm:text-[16.5px] text-[#6E6E73] font-medium leading-relaxed">
-            {isEnglish
-              ? 'This page got erased from the canvas. But the universe is full of tools ready to transform your images.'
-              : 'Aradığınız sayfa kanvastan silinmiş veya yanlış boyuta ışınlanmış. Ama yaratıcı araçlarınız parmaklarınızın ucunda!'}
-          </p>
-        </motion.div>
+        {/* Big Gradient Title */}
+        <h1 className="text-3xl sm:text-4xl font-black text-[#1D1D1F] tracking-tight mb-3">
+          {isEnglish ? 'Oops! Page got scattered.' : 'Ooops! Sayfa darmadağın oldu.'}
+        </h1>
 
-        {/* ── BOMBATIC GLOWING ACTION BUTTONS ─────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
-          className="flex flex-wrap items-center justify-center gap-3.5 mt-8 mb-10"
-        >
+        <p className="text-[15px] sm:text-[16px] text-[#6E6E73] font-medium leading-relaxed mb-8 max-w-md mx-auto">
+          {isEnglish
+            ? 'Move your mouse to scatter the falling 404s, or click anywhere on the screen to spawn a new explosion!'
+            : 'Fareni gezdirerek düşen 404\'leri dağıtabilir veya ekrana tıklayarak yeni 404 patlamaları yaratabilirsin!'}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-3.5 mb-8">
           <Link
             to={basePath || '/'}
-            className="group relative inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-[14.5px] font-bold text-white bg-gradient-to-r from-[#1D1D1F] via-[#2A2B32] to-[#1D1D1F] hover:from-black hover:to-black shadow-[0_10px_30px_rgba(0,0,0,0.18)] hover:shadow-[0_16px_40px_rgba(184,150,223,0.35)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
+            className="group relative inline-flex items-center gap-2 px-7 py-3 rounded-full text-[14.5px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-lg shadow-black/15 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98] transition-all"
           >
-            <HomeIcon size={16} strokeWidth={2.2} className="group-hover:-translate-y-0.5 transition-transform" />
-            <span>{isEnglish ? 'Return to Home Universe' : 'Ana Sayfaya Dön'}</span>
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#86B3F0]/20 via-[#B896DF]/20 to-[#FA7DA8]/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <HomeIcon size={16} strokeWidth={2.2} />
+            <span>{isEnglish ? 'Back to Home' : 'Ana Sayfaya Dön'}</span>
           </Link>
 
           <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[14.5px] font-bold text-zinc-700 bg-white/90 hover:bg-white border border-gray-200/90 shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 backdrop-blur-md"
+            onClick={dropMore404s}
+            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-full text-[14px] font-bold text-white bg-gradient-to-r from-[#FA7DA8] via-[#B896DF] to-[#86B3F0] hover:opacity-95 shadow-md hover:shadow-lg hover:scale-[1.03] active:scale-[0.98] transition-all"
           >
-            <ArrowLeft size={16} strokeWidth={2.2} />
+            <Plus size={16} strokeWidth={2.5} />
+            <span>{isEnglish ? 'Drop More 404s' : 'Daha Çok 404 Yağdır!'}</span>
+          </button>
+
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-bold text-zinc-700 bg-white hover:bg-gray-50 border border-gray-200/90 shadow-sm hover:shadow hover:scale-[1.03] active:scale-[0.98] transition-all"
+          >
+            <ArrowLeft size={15} strokeWidth={2.2} />
             <span>{isEnglish ? 'Go Back' : 'Geri Dön'}</span>
           </button>
-        </motion.div>
+        </div>
 
-        {/* ── QUICK TELEPORT TOOL PILLS ───────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
-          className="w-full max-w-xl pt-4 border-t border-gray-200/60"
-        >
-          <div className="flex items-center justify-center gap-1.5 text-[11.5px] font-bold uppercase tracking-wider text-zinc-400 mb-3.5">
-            <Sparkles size={13} className="text-[#B896DF]" />
-            <span>{isEnglish ? 'Quick Portals' : 'Hızlı Geçitler'}</span>
+        {/* Quick Tools Directory */}
+        <div className="pt-6 border-t border-gray-100">
+          <div className="text-[11.5px] font-bold uppercase tracking-wider text-zinc-400 mb-3">
+            {isEnglish ? 'Popular Tools' : 'Hemen Kullanabileceğin Popüler Araçlar'}
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             {popularTools.map((tool) => (
               <Link
                 key={tool.path}
                 to={tool.path}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold text-zinc-700 bg-white/80 hover:bg-white border border-gray-200/80 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${tool.color}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold text-zinc-700 bg-gray-50 hover:bg-white hover:text-brand-purple border border-gray-200/70 hover:border-purple-200 shadow-sm hover:shadow transition-all"
               >
-                <span>{tool.icon}</span>
+                <span className="text-zinc-400">{tool.icon}</span>
                 <span>{tool.label}</span>
               </Link>
             ))}
           </div>
-        </motion.div>
+        </div>
+      </motion.div>
 
+      {/* Bottom Floating Interactive Hint */}
+      <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none z-10">
+        <div className="px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-gray-200/80 text-[12px] font-bold text-zinc-600 shadow-sm">
+          💡 {isEnglish ? 'Tip: Move cursor to push 404s • Click anywhere to burst' : 'İpucu: Fareyi gezdirerek 404\'leri it • Ekrana tıklayarak patlat'}
+        </div>
       </div>
     </div>
   );
