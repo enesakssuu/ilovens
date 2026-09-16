@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Home as HomeIcon, Sparkles } from 'lucide-react';
+import { Home as HomeIcon } from 'lucide-react';
 
 export const NotFound: React.FC = () => {
   const { i18n } = useTranslation();
@@ -27,7 +27,7 @@ export const NotFound: React.FC = () => {
   useEffect(() => {
     const blinkInterval = setInterval(() => {
       triggerBlink();
-    }, 4500);
+    }, 4200);
 
     return () => clearInterval(blinkInterval);
   }, [triggerBlink]);
@@ -39,7 +39,7 @@ export const NotFound: React.FC = () => {
       const mouseY = e.clientY;
 
       // Max distance pupil can move inside eye socket (in pixels)
-      const maxDistance = window.innerWidth < 640 ? 20 : 28;
+      const maxDistance = window.innerWidth < 640 ? 28 : 42;
 
       // ── Left Eye Pupil Tracking ──
       if (leftEyeRef.current) {
@@ -52,7 +52,7 @@ export const NotFound: React.FC = () => {
         const angle = Math.atan2(dy, dx);
         const dist = Math.hypot(dx, dy);
 
-        const clampedDist = Math.min(dist * 0.075, maxDistance);
+        const clampedDist = Math.min(dist * 0.085, maxDistance);
         setLeftPupil({
           x: Math.cos(angle) * clampedDist,
           y: Math.sin(angle) * clampedDist,
@@ -70,7 +70,7 @@ export const NotFound: React.FC = () => {
         const angle = Math.atan2(dy, dx);
         const dist = Math.hypot(dx, dy);
 
-        const clampedDist = Math.min(dist * 0.075, maxDistance);
+        const clampedDist = Math.min(dist * 0.085, maxDistance);
         setRightPupil({
           x: Math.cos(angle) * clampedDist,
           y: Math.sin(angle) * clampedDist,
@@ -81,8 +81,8 @@ export const NotFound: React.FC = () => {
       const screenYRatio = mouseY / window.innerHeight;
       const screenXRatio = (mouseX / window.innerWidth) - 0.5;
       setEyebrowOffset({
-        y: (screenYRatio - 0.5) * 6,
-        rotate: screenXRatio * 5,
+        y: (screenYRatio - 0.5) * 8,
+        rotate: screenXRatio * 6,
       });
     };
 
@@ -93,31 +93,18 @@ export const NotFound: React.FC = () => {
   return (
     <div
       onClick={triggerBlink}
-      className="w-full min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-8 select-none"
+      className="w-full min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-4 sm:px-8 py-10 select-none"
     >
-      <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center my-auto">
+      <div className="w-full max-w-4xl mx-auto flex flex-col items-center text-center my-auto">
 
-        {/* ── TOP BADGE ──────────────────────────────────────────────── */}
+        {/* ── BOLD, PROMINENT HEADLINE ───────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full text-[12px] font-bold text-zinc-700 bg-white/90 border border-gray-200/90 shadow-sm backdrop-blur-md"
+          transition={{ duration: 0.5 }}
+          className="mb-10 sm:mb-14"
         >
-          <Sparkles size={13} className="text-[#FA7DA8]" />
-          <span className="bg-gradient-to-r from-[#FA7DA8] via-[#B896DF] to-[#86B3F0] bg-clip-text text-transparent font-black tracking-wider uppercase">
-            {isEnglish ? '404 · Error' : '404 · Sayfa Bulunamadı'}
-          </span>
-        </motion.div>
-
-        {/* ── BEAUTIFULLY PROPORTIONED HEADLINE & SUBTEXT ───────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.05 }}
-          className="mb-8 sm:mb-10 max-w-xl"
-        >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-[-0.035em] text-[#1D1D1F] leading-[1.12] mb-3 font-sans">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-[-0.04em] text-[#1D1D1F] leading-[1.08] font-sans">
             {isEnglish ? (
               <>
                 Uh oh! The page you&apos;re looking for<br className="hidden sm:inline" /> can&apos;t be found.
@@ -128,21 +115,16 @@ export const NotFound: React.FC = () => {
               </>
             )}
           </h1>
-          <p className="text-[15px] sm:text-[16.5px] text-[#6E6E73] font-medium leading-relaxed max-w-md mx-auto">
-            {isEnglish
-              ? "Looks like this page got cropped out of frame or doesn't exist."
-              : 'Görünüşe göre bu sayfa kadrajın dışına çıkmış veya silinmiş.'}
-          </p>
         </motion.div>
 
-        {/* ── CENTER SECTION: INTERACTIVE MOUSE-TRACKING EYES ────────── */}
+        {/* ── LARGE INTERACTIVE MOUSE-TRACKING EYES ──────────────────── */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-8 sm:mb-10"
+          className="mb-12 sm:mb-16"
         >
-          <div className="flex items-center justify-center gap-4 sm:gap-6 relative cursor-pointer group">
+          <div className="flex items-center justify-center gap-6 sm:gap-10 relative cursor-pointer group">
 
             {/* ── LEFT EYE ── */}
             <div className="flex flex-col items-center">
@@ -153,7 +135,7 @@ export const NotFound: React.FC = () => {
                   rotate: -eyebrowOffset.rotate - 3,
                 }}
                 transition={{ type: 'spring', damping: 15, stiffness: 120 }}
-                className="w-16 sm:w-24 h-3.5 sm:h-4.5 bg-[#1D1D1F] rounded-full mb-2.5 sm:mb-3 transform -rotate-6 shadow-sm"
+                className="w-24 sm:w-36 h-4 sm:h-6 bg-[#1D1D1F] rounded-full mb-3.5 sm:mb-5 transform -rotate-6 shadow-sm"
               />
 
               {/* Left Eye Socket */}
@@ -161,7 +143,7 @@ export const NotFound: React.FC = () => {
                 ref={leftEyeRef}
                 animate={{ scaleY: isBlinking ? 0.08 : 1 }}
                 transition={{ duration: 0.1 }}
-                className="relative w-28 h-28 sm:w-38 sm:h-38 md:w-42 md:h-42 rounded-full bg-white border-[6px] sm:border-[8px] border-[#1D1D1F] shadow-[0_12px_28px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
+                className="relative w-36 h-36 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-full bg-white border-[8px] sm:border-[11px] border-[#1D1D1F] shadow-[0_16px_36px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
               >
                 {/* Pupil */}
                 <motion.div
@@ -169,10 +151,10 @@ export const NotFound: React.FC = () => {
                     transform: `translate(${leftPupil.x}px, ${leftPupil.y}px)`,
                   }}
                   transition={{ type: 'spring', damping: 22, stiffness: 180 }}
-                  className="w-12 h-12 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
+                  className="w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
                 >
                   {/* Catchlight / Reflection */}
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white absolute top-2 left-2 sm:top-2.5 sm:left-3 opacity-95" />
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white absolute top-2.5 left-2.5 sm:top-4 sm:left-4 opacity-95" />
                 </motion.div>
               </motion.div>
             </div>
@@ -186,7 +168,7 @@ export const NotFound: React.FC = () => {
                   rotate: eyebrowOffset.rotate + 3,
                 }}
                 transition={{ type: 'spring', damping: 15, stiffness: 120 }}
-                className="w-16 sm:w-24 h-3.5 sm:h-4.5 bg-[#1D1D1F] rounded-full mb-2.5 sm:mb-3 transform rotate-6 shadow-sm"
+                className="w-24 sm:w-36 h-4 sm:h-6 bg-[#1D1D1F] rounded-full mb-3.5 sm:mb-5 transform rotate-6 shadow-sm"
               />
 
               {/* Right Eye Socket */}
@@ -194,7 +176,7 @@ export const NotFound: React.FC = () => {
                 ref={rightEyeRef}
                 animate={{ scaleY: isBlinking ? 0.08 : 1 }}
                 transition={{ duration: 0.1 }}
-                className="relative w-28 h-28 sm:w-38 sm:h-38 md:w-42 md:h-42 rounded-full bg-white border-[6px] sm:border-[8px] border-[#1D1D1F] shadow-[0_12px_28px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
+                className="relative w-36 h-36 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-full bg-white border-[8px] sm:border-[11px] border-[#1D1D1F] shadow-[0_16px_36px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
               >
                 {/* Pupil */}
                 <motion.div
@@ -202,10 +184,10 @@ export const NotFound: React.FC = () => {
                     transform: `translate(${rightPupil.x}px, ${rightPupil.y}px)`,
                   }}
                   transition={{ type: 'spring', damping: 22, stiffness: 180 }}
-                  className="w-12 h-12 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
+                  className="w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
                 >
                   {/* Catchlight / Reflection */}
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white absolute top-2 left-2 sm:top-2.5 sm:left-3 opacity-95" />
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white absolute top-2.5 left-2.5 sm:top-4 sm:left-4 opacity-95" />
                 </motion.div>
               </motion.div>
             </div>
@@ -213,18 +195,18 @@ export const NotFound: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* ── SINGLE CENTERED MAIN ACTION BUTTON ─────────────────────── */}
+        {/* ── BIG CENTERED ANA SAYFAYA DÖN BUTTON ───────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.15 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           className="flex items-center justify-center"
         >
           <Link
             to={basePath || '/'}
-            className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full text-[15px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-lg shadow-black/15 hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
+            className="inline-flex items-center gap-3 px-9 sm:px-11 py-4 sm:py-4.5 rounded-full text-[16px] sm:text-[17px] font-extrabold text-white bg-[#1D1D1F] hover:bg-black shadow-xl shadow-black/15 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
           >
-            <HomeIcon size={17} strokeWidth={2.2} />
+            <HomeIcon size={19} strokeWidth={2.4} />
             <span>{isEnglish ? 'Back to Home' : 'Ana Sayfaya Dön'}</span>
           </Link>
         </motion.div>
