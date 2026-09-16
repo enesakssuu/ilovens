@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -19,6 +19,8 @@ import MemeTool from './pages/MemeTool';
 import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
+import NotFound from './pages/NotFound';
+
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -30,15 +32,16 @@ function ScrollToTop() {
 }
 
 function LangWrapper() {
-  const { lang } = useParams<{ lang: string }>();
+  const { pathname } = useLocation();
   const { i18n } = useTranslation();
 
   useEffect(() => {
-    const resolvedLang = lang === 'en' ? 'en' : 'tr';
+    const isEn = pathname.startsWith('/en');
+    const resolvedLang = isEn ? 'en' : 'tr';
     if (i18n.language !== resolvedLang) {
       i18n.changeLanguage(resolvedLang);
     }
-  }, [lang, i18n]);
+  }, [pathname, i18n]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -74,21 +77,22 @@ export default function App() {
     <BrowserRouter basename="/ilovens">
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<LangWrapper />}>
-          <Route index element={<Home />} />
+        <Route element={<LangWrapper />}>
+          {/* Turkish (Default) Routes */}
+          <Route path="/" element={<Home />} />
           {toolRoutes.map((r) => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
-        </Route>
 
-        <Route path="/en" element={<LangWrapper />}>
-          <Route index element={<Home />} />
+          {/* English Routes */}
+          <Route path="/en" element={<Home />} />
           {toolRoutes.map((r) => (
-            <Route key={r.path} path={r.path} element={r.element} />
+            <Route key={`en-${r.path}`} path={`en/${r.path}`} element={r.element} />
           ))}
-        </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+          {/* 404 Catch-All Route */}
+          <Route path="*" element={<NotFound />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
