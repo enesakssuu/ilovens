@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -19,24 +19,12 @@ import MemeTool from './pages/MemeTool';
 import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
-import AdminDashboard from './pages/AdminDashboard';
-
 function ScrollToTop() {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-
-    // Support #/admin, #admin, ?/admin fallback URLs strictly to /admin
-    const hash = window.location.hash.toLowerCase();
-    const search = window.location.search.toLowerCase();
-    if (hash.includes('admin') || search.includes('admin')) {
-      if (!pathname.includes('admin')) {
-        navigate('/admin', { replace: true });
-      }
-    }
-  }, [pathname, navigate]);
+  }, [pathname]);
 
   return null;
 }
@@ -79,7 +67,6 @@ const toolRoutes = [
   { path: 'blur-face', element: <BlurFaceTool /> },
   { path: 'color-palette', element: <ColorPaletteTool /> },
   { path: 'photo-editor', element: <PhotoEditorTool /> },
-  { path: 'admin', element: <AdminDashboard /> },
 ];
 
 export default function App() {
@@ -99,11 +86,6 @@ export default function App() {
           {toolRoutes.map((r) => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
-        </Route>
-
-        {/* Direct admin route */}
-        <Route path="/admin" element={<LangWrapper />}>
-          <Route index element={<AdminDashboard />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

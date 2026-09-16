@@ -114,7 +114,6 @@ export default function Navbar() {
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
   const menuGroups = useMenuGroups(isEnglish, basePath);
-  const isAdmin = location.pathname.includes('admin');
 
   const toggleLanguage = () => {
     if (isEnglish) navigate(location.pathname.replace(/^\/en/, '') || '/');
@@ -131,51 +130,6 @@ export default function Navbar() {
   };
 
   const activeGroup = menuGroups.find((g) => g.key === activeMenu);
-
-  if (isAdmin) {
-    return (
-      <header className="sticky top-4 z-50 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto relative">
-          <div className="bg-white/95 backdrop-blur-xl rounded-full px-5 sm:px-7 py-2.5 border border-gray-200/80 shadow-md flex items-center justify-between transition-all">
-            {/* Left: Logo & Admin Badge */}
-            <div className="flex items-center gap-3">
-              <Link to={basePath || '/'} className="flex items-center flex-shrink-0 group">
-                <img src={logoImg} alt="iLoveNS" className="h-8 sm:h-9 w-auto object-contain group-hover:scale-105 transition-transform" />
-              </Link>
-              <span className="px-2.5 py-0.5 text-[11px] font-bold text-white bg-gradient-to-r from-[#86B3F0] via-[#B896DF] to-[#FA7DA8] rounded-full shadow-sm uppercase tracking-wider">
-                Admin Panel
-              </span>
-            </div>
-
-            {/* Center: Live Status Indicator */}
-            <div className="hidden md:flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{isEnglish ? 'Real-Time System Monitoring' : 'Canlı Sistem Takibi'}</span>
-            </div>
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={toggleLanguage}
-                className="flex items-center gap-1.5 text-[12px] font-semibold text-zinc-600 hover:text-brand-text px-3 py-1.5 rounded-full hover:bg-zinc-100 transition-all"
-              >
-                <Globe size={13} strokeWidth={2} />
-                {isEnglish ? 'TR' : 'EN'}
-              </button>
-
-              <Link
-                to={basePath || '/'}
-                className="flex items-center gap-1.5 text-[13px] font-semibold text-white bg-[#323642] hover:bg-[#232630] px-4 py-1.5 rounded-full shadow-sm transition-all"
-              >
-                <ArrowRight size={13} strokeWidth={2.2} className="rotate-180" />
-                <span>{isEnglish ? 'Back to Site' : 'Siteye Dön'}</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
-    );
-  }
 
   return (
     <header className="sticky top-4 z-50 px-4 sm:px-6">
