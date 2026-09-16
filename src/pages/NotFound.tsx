@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Home as HomeIcon,
   ArrowLeft,
+  Sparkles,
   Minimize2,
   RefreshCw,
   Maximize2,
@@ -30,14 +31,14 @@ export const NotFound: React.FC = () => {
   // Trigger brief blink
   const triggerBlink = useCallback(() => {
     setIsBlinking(true);
-    setTimeout(() => setIsBlinking(false), 140);
+    setTimeout(() => setIsBlinking(false), 130);
   }, []);
 
   // Periodic natural blinking
   useEffect(() => {
     const blinkInterval = setInterval(() => {
       triggerBlink();
-    }, 4200);
+    }, 4500);
 
     return () => clearInterval(blinkInterval);
   }, [triggerBlink]);
@@ -49,7 +50,7 @@ export const NotFound: React.FC = () => {
       const mouseY = e.clientY;
 
       // Max distance pupil can move inside eye socket (in pixels)
-      const maxDistance = window.innerWidth < 640 ? 22 : 32;
+      const maxDistance = window.innerWidth < 640 ? 20 : 28;
 
       // ── Left Eye Pupil Tracking ──
       if (leftEyeRef.current) {
@@ -62,7 +63,7 @@ export const NotFound: React.FC = () => {
         const angle = Math.atan2(dy, dx);
         const dist = Math.hypot(dx, dy);
 
-        const clampedDist = Math.min(dist * 0.08, maxDistance);
+        const clampedDist = Math.min(dist * 0.075, maxDistance);
         setLeftPupil({
           x: Math.cos(angle) * clampedDist,
           y: Math.sin(angle) * clampedDist,
@@ -80,7 +81,7 @@ export const NotFound: React.FC = () => {
         const angle = Math.atan2(dy, dx);
         const dist = Math.hypot(dx, dy);
 
-        const clampedDist = Math.min(dist * 0.08, maxDistance);
+        const clampedDist = Math.min(dist * 0.075, maxDistance);
         setRightPupil({
           x: Math.cos(angle) * clampedDist,
           y: Math.sin(angle) * clampedDist,
@@ -91,8 +92,8 @@ export const NotFound: React.FC = () => {
       const screenYRatio = mouseY / window.innerHeight;
       const screenXRatio = (mouseX / window.innerWidth) - 0.5;
       setEyebrowOffset({
-        y: (screenYRatio - 0.5) * 8,
-        rotate: screenXRatio * 6,
+        y: (screenYRatio - 0.5) * 6,
+        rotate: screenXRatio * 5,
       });
     };
 
@@ -101,9 +102,9 @@ export const NotFound: React.FC = () => {
   }, []);
 
   const popularTools = [
-    { label: isEnglish ? 'Compress Image' : 'Görsel Sıkıştır', path: `${basePath}/compress`, icon: <Minimize2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Format Convert' : 'Format Dönüştür', path: `${basePath}/convert`, icon: <RefreshCw size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Resize Image' : 'Boyutlandır', path: `${basePath}/resize`, icon: <Maximize2 size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Compress' : 'Sıkıştır', path: `${basePath}/compress`, icon: <Minimize2 size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Convert' : 'Dönüştür', path: `${basePath}/convert`, icon: <RefreshCw size={13} strokeWidth={2.2} /> },
+    { label: isEnglish ? 'Resize' : 'Boyutlandır', path: `${basePath}/resize`, icon: <Maximize2 size={13} strokeWidth={2.2} /> },
     { label: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü', path: `${basePath}/photo-editor`, icon: <Wand2 size={13} strokeWidth={2.2} /> },
     { label: isEnglish ? 'Color Palette' : 'Renk Paleti', path: `${basePath}/color-palette`, icon: <Palette size={13} strokeWidth={2.2} /> },
     { label: 'SVG Optimizer', path: `${basePath}/svg-optimize`, icon: <Code2 size={13} strokeWidth={2.2} /> },
@@ -112,139 +113,171 @@ export const NotFound: React.FC = () => {
   return (
     <div
       onClick={triggerBlink}
-      className="w-full min-h-[calc(100vh-80px)] flex flex-col justify-between px-6 sm:px-12 lg:px-20 pt-6 pb-12 select-none overflow-hidden"
+      className="w-full min-h-[calc(100vh-100px)] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-8 select-none"
     >
-      {/* ── TOP SECTION: EDITORIAL HEADER MESSAGE ──────────────────── */}
-      <div className="w-full max-w-4xl mx-auto pt-4 sm:pt-6">
+      <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center my-auto">
+
+        {/* ── TOP BADGE ──────────────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: -12 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4 }}
+          className="inline-flex items-center gap-2 mb-4 px-4 py-1.5 rounded-full text-[12px] font-bold text-zinc-700 bg-white/90 border border-gray-200/90 shadow-sm backdrop-blur-md"
         >
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#1D1D1F] leading-[1.12]">
+          <Sparkles size={13} className="text-[#FA7DA8]" />
+          <span className="bg-gradient-to-r from-[#FA7DA8] via-[#B896DF] to-[#86B3F0] bg-clip-text text-transparent font-black tracking-wider uppercase">
+            {isEnglish ? '404 · Error' : '404 · Sayfa Bulunamadı'}
+          </span>
+        </motion.div>
+
+        {/* ── BEAUTIFULLY PROPORTIONED HEADLINE & SUBTEXT ───────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.05 }}
+          className="mb-8 sm:mb-10 max-w-xl"
+        >
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-[-0.035em] text-[#1D1D1F] leading-[1.12] mb-3 font-sans">
             {isEnglish ? (
               <>
-                Uh oh, the page you&apos;re looking for<br />
-                can&apos;t be found.
+                Uh oh! The page you&apos;re looking for<br className="hidden sm:inline" /> can&apos;t be found.
               </>
             ) : (
               <>
-                Uh oh, aradığınız sayfa<br />
-                bulunamadı.
+                Uh oh! Aradığınız sayfa<br className="hidden sm:inline" /> bulunamadı.
               </>
             )}
           </h1>
+          <p className="text-[15px] sm:text-[16.5px] text-[#6E6E73] font-medium leading-relaxed max-w-md mx-auto">
+            {isEnglish
+              ? "Looks like this page got cropped out of frame or doesn't exist."
+              : 'Görünüşe göre bu sayfa kadrajın dışına çıkmış veya silinmiş.'}
+          </p>
         </motion.div>
-      </div>
 
-      {/* ── CENTER SECTION: INTERACTIVE MOUSE-TRACKING EYES ────────── */}
-      <div className="w-full flex flex-col items-center justify-center my-auto py-8">
-        <div className="flex items-center justify-center gap-4 sm:gap-7 relative cursor-pointer">
+        {/* ── CENTER SECTION: INTERACTIVE MOUSE-TRACKING EYES ────────── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-8 sm:mb-10"
+        >
+          <div className="flex items-center justify-center gap-4 sm:gap-6 relative cursor-pointer group">
 
-          {/* ── LEFT EYE ── */}
-          <div className="flex flex-col items-center">
-            {/* Left Eyebrow */}
-            <motion.div
-              animate={{
-                y: eyebrowOffset.y,
-                rotate: -eyebrowOffset.rotate - 3,
-              }}
-              transition={{ type: 'spring', damping: 15, stiffness: 120 }}
-              className="w-20 sm:w-28 h-4 sm:h-5 bg-[#1D1D1F] rounded-full mb-3 sm:mb-4 transform -rotate-6"
-            />
-
-            {/* Left Eye Socket */}
-            <motion.div
-              ref={leftEyeRef}
-              animate={{ scaleY: isBlinking ? 0.08 : 1 }}
-              transition={{ duration: 0.12 }}
-              className="relative w-32 h-32 sm:w-44 sm:h-44 md:w-48 md:h-48 rounded-full bg-white border-[7px] sm:border-[9px] border-[#1D1D1F] shadow-[0_12px_30px_rgba(0,0,0,0.06)] flex items-center justify-center overflow-hidden"
-            >
-              {/* Pupil */}
+            {/* ── LEFT EYE ── */}
+            <div className="flex flex-col items-center">
+              {/* Left Eyebrow */}
               <motion.div
-                style={{
-                  transform: `translate(${leftPupil.x}px, ${leftPupil.y}px)`,
+                animate={{
+                  y: eyebrowOffset.y,
+                  rotate: -eyebrowOffset.rotate - 3,
                 }}
-                transition={{ type: 'spring', damping: 20, stiffness: 160 }}
-                className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
-              >
-                {/* Catchlight / Reflection */}
-                <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-white absolute top-2 left-2.5 sm:top-3 sm:left-3.5 opacity-90" />
-              </motion.div>
-            </motion.div>
-          </div>
+                transition={{ type: 'spring', damping: 15, stiffness: 120 }}
+                className="w-16 sm:w-24 h-3.5 sm:h-4.5 bg-[#1D1D1F] rounded-full mb-2.5 sm:mb-3 transform -rotate-6 shadow-sm"
+              />
 
-          {/* ── RIGHT EYE ── */}
-          <div className="flex flex-col items-center">
-            {/* Right Eyebrow */}
-            <motion.div
-              animate={{
-                y: eyebrowOffset.y,
-                rotate: eyebrowOffset.rotate + 3,
-              }}
-              transition={{ type: 'spring', damping: 15, stiffness: 120 }}
-              className="w-20 sm:w-28 h-4 sm:h-5 bg-[#1D1D1F] rounded-full mb-3 sm:mb-4 transform rotate-6"
-            />
-
-            {/* Right Eye Socket */}
-            <motion.div
-              ref={rightEyeRef}
-              animate={{ scaleY: isBlinking ? 0.08 : 1 }}
-              transition={{ duration: 0.12 }}
-              className="relative w-32 h-32 sm:w-44 sm:h-44 md:w-48 md:h-48 rounded-full bg-white border-[7px] sm:border-[9px] border-[#1D1D1F] shadow-[0_12px_30px_rgba(0,0,0,0.06)] flex items-center justify-center overflow-hidden"
-            >
-              {/* Pupil */}
+              {/* Left Eye Socket */}
               <motion.div
-                style={{
-                  transform: `translate(${rightPupil.x}px, ${rightPupil.y}px)`,
-                }}
-                transition={{ type: 'spring', damping: 20, stiffness: 160 }}
-                className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
+                ref={leftEyeRef}
+                animate={{ scaleY: isBlinking ? 0.08 : 1 }}
+                transition={{ duration: 0.1 }}
+                className="relative w-28 h-28 sm:w-38 sm:h-38 md:w-42 md:h-42 rounded-full bg-white border-[6px] sm:border-[8px] border-[#1D1D1F] shadow-[0_12px_28px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
               >
-                {/* Catchlight / Reflection */}
-                <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-white absolute top-2 left-2.5 sm:top-3 sm:left-3.5 opacity-90" />
+                {/* Pupil */}
+                <motion.div
+                  style={{
+                    transform: `translate(${leftPupil.x}px, ${leftPupil.y}px)`,
+                  }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 180 }}
+                  className="w-12 h-12 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
+                >
+                  {/* Catchlight / Reflection */}
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white absolute top-2 left-2 sm:top-2.5 sm:left-3 opacity-95" />
+                </motion.div>
               </motion.div>
-            </motion.div>
+            </div>
+
+            {/* ── RIGHT EYE ── */}
+            <div className="flex flex-col items-center">
+              {/* Right Eyebrow */}
+              <motion.div
+                animate={{
+                  y: eyebrowOffset.y,
+                  rotate: eyebrowOffset.rotate + 3,
+                }}
+                transition={{ type: 'spring', damping: 15, stiffness: 120 }}
+                className="w-16 sm:w-24 h-3.5 sm:h-4.5 bg-[#1D1D1F] rounded-full mb-2.5 sm:mb-3 transform rotate-6 shadow-sm"
+              />
+
+              {/* Right Eye Socket */}
+              <motion.div
+                ref={rightEyeRef}
+                animate={{ scaleY: isBlinking ? 0.08 : 1 }}
+                transition={{ duration: 0.1 }}
+                className="relative w-28 h-28 sm:w-38 sm:h-38 md:w-42 md:h-42 rounded-full bg-white border-[6px] sm:border-[8px] border-[#1D1D1F] shadow-[0_12px_28px_rgba(0,0,0,0.08)] flex items-center justify-center overflow-hidden"
+              >
+                {/* Pupil */}
+                <motion.div
+                  style={{
+                    transform: `translate(${rightPupil.x}px, ${rightPupil.y}px)`,
+                  }}
+                  transition={{ type: 'spring', damping: 22, stiffness: 180 }}
+                  className="w-12 h-12 sm:w-16 sm:h-16 md:w-18 md:h-18 rounded-full bg-[#1D1D1F] relative flex items-center justify-center shadow-inner"
+                >
+                  {/* Catchlight / Reflection */}
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white absolute top-2 left-2 sm:top-2.5 sm:left-3 opacity-95" />
+                </motion.div>
+              </motion.div>
+            </div>
+
           </div>
+        </motion.div>
 
-        </div>
-      </div>
-
-      {/* ── BOTTOM ACTIONS & QUICK TOOLS ───────────────────────────── */}
-      <div className="w-full max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5 pt-4 border-t border-black/10">
-        
-        {/* Navigation Buttons */}
-        <div className="flex items-center gap-3">
+        {/* ── BOTTOM ACTIONS ─────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.15 }}
+          className="flex flex-wrap items-center justify-center gap-3.5 mb-8"
+        >
           <Link
             to={basePath || '/'}
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-[14px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-[14.5px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-lg shadow-black/10 hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
           >
-            <HomeIcon size={15} strokeWidth={2.2} />
+            <HomeIcon size={16} strokeWidth={2.2} />
             <span>{isEnglish ? 'Back to Home' : 'Ana Sayfaya Dön'}</span>
           </Link>
 
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-bold text-[#1D1D1F] bg-white hover:bg-gray-50 border border-gray-200/90 shadow-sm hover:shadow hover:scale-105 active:scale-95 transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-[14.5px] font-bold text-[#1D1D1F] bg-white hover:bg-gray-50 border border-gray-200/90 shadow-sm hover:shadow hover:scale-105 active:scale-95 transition-all backdrop-blur-md"
           >
-            <ArrowLeft size={15} strokeWidth={2.2} />
+            <ArrowLeft size={16} strokeWidth={2.2} />
             <span>{isEnglish ? 'Go Back' : 'Geri Dön'}</span>
           </button>
-        </div>
+        </motion.div>
 
-        {/* Popular Tools Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {popularTools.slice(0, 4).map((tool) => (
-            <Link
-              key={tool.path}
-              to={tool.path}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-zinc-700 bg-white/90 hover:bg-white hover:text-brand-purple border border-gray-200/80 shadow-sm hover:shadow transition-all"
-            >
-              <span className="text-zinc-400">{tool.icon}</span>
-              <span>{tool.label}</span>
-            </Link>
-          ))}
-        </div>
+        {/* ── POPULAR TOOLS PILLS ────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.2 }}
+          className="w-full max-w-lg pt-4 border-t border-gray-200/60"
+        >
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {popularTools.map((tool) => (
+              <Link
+                key={tool.path}
+                to={tool.path}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold text-zinc-700 bg-white/80 hover:bg-white hover:text-brand-purple border border-gray-200/80 shadow-sm hover:shadow transition-all"
+              >
+                <span className="text-zinc-400">{tool.icon}</span>
+                <span>{tool.label}</span>
+              </Link>
+            ))}
+          </div>
+        </motion.div>
+
       </div>
     </div>
   );
