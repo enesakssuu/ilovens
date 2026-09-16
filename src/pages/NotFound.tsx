@@ -1,22 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import {
-  Home as HomeIcon,
-  ArrowLeft,
-  Sparkles,
-  Minimize2,
-  RefreshCw,
-  Maximize2,
-  Wand2,
-  Palette,
-  Code2
-} from 'lucide-react';
+import { Home as HomeIcon, Sparkles } from 'lucide-react';
 
 export const NotFound: React.FC = () => {
   const { i18n } = useTranslation();
-  const navigate = useNavigate();
   const isEnglish = i18n.language === 'en';
   const basePath = isEnglish ? '/en' : '';
 
@@ -100,15 +89,6 @@ export const NotFound: React.FC = () => {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
-
-  const popularTools = [
-    { label: isEnglish ? 'Compress' : 'Sıkıştır', path: `${basePath}/compress`, icon: <Minimize2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Convert' : 'Dönüştür', path: `${basePath}/convert`, icon: <RefreshCw size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Resize' : 'Boyutlandır', path: `${basePath}/resize`, icon: <Maximize2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü', path: `${basePath}/photo-editor`, icon: <Wand2 size={13} strokeWidth={2.2} /> },
-    { label: isEnglish ? 'Color Palette' : 'Renk Paleti', path: `${basePath}/color-palette`, icon: <Palette size={13} strokeWidth={2.2} /> },
-    { label: 'SVG Optimizer', path: `${basePath}/svg-optimize`, icon: <Code2 size={13} strokeWidth={2.2} /> },
-  ];
 
   return (
     <div
@@ -233,49 +213,20 @@ export const NotFound: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* ── BOTTOM ACTIONS ─────────────────────────────────────────── */}
+        {/* ── SINGLE CENTERED MAIN ACTION BUTTON ─────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.15 }}
-          className="flex flex-wrap items-center justify-center gap-3.5 mb-8"
+          className="flex items-center justify-center"
         >
           <Link
             to={basePath || '/'}
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-[14.5px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-lg shadow-black/10 hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
+            className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full text-[15px] font-bold text-white bg-[#1D1D1F] hover:bg-black shadow-lg shadow-black/15 hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
           >
-            <HomeIcon size={16} strokeWidth={2.2} />
+            <HomeIcon size={17} strokeWidth={2.2} />
             <span>{isEnglish ? 'Back to Home' : 'Ana Sayfaya Dön'}</span>
           </Link>
-
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-[14.5px] font-bold text-[#1D1D1F] bg-white hover:bg-gray-50 border border-gray-200/90 shadow-sm hover:shadow hover:scale-105 active:scale-95 transition-all backdrop-blur-md"
-          >
-            <ArrowLeft size={16} strokeWidth={2.2} />
-            <span>{isEnglish ? 'Go Back' : 'Geri Dön'}</span>
-          </button>
-        </motion.div>
-
-        {/* ── POPULAR TOOLS PILLS ────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.2 }}
-          className="w-full max-w-lg pt-4 border-t border-gray-200/60"
-        >
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {popularTools.map((tool) => (
-              <Link
-                key={tool.path}
-                to={tool.path}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold text-zinc-700 bg-white/80 hover:bg-white hover:text-brand-purple border border-gray-200/80 shadow-sm hover:shadow transition-all"
-              >
-                <span className="text-zinc-400">{tool.icon}</span>
-                <span>{tool.label}</span>
-              </Link>
-            ))}
-          </div>
         </motion.div>
 
       </div>
