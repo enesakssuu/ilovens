@@ -134,6 +134,7 @@ export async function renderPdfTextLayer(
     container.innerHTML = '';
     container.style.width = `${viewport.width}px`;
     container.style.height = `${viewport.height}px`;
+    container.style.setProperty('--scale-factor', `${scale}`);
 
     const textContent = await page.getTextContent();
     const textLayer = new pdfjsLib.TextLayer({
@@ -250,11 +251,13 @@ export function renderAnnotationsToDataUrl(
         ctx.fill();
       }
     } else if (item.type === 'text') {
-      ctx.font = `${item.isItalic ? 'italic ' : ''}${item.isBold ? 'bold ' : ''}${item.fontSize || 16}px ${
-        item.fontFamily || 'sans-serif'
+      const fSize = item.fontSize || 16;
+      ctx.font = `${item.isItalic ? 'italic ' : ''}${item.isBold ? 'bold ' : ''}${fSize}px ${
+        item.fontFamily || 'Inter, system-ui, sans-serif'
       }`;
       ctx.fillStyle = item.color || '#000000';
       ctx.globalAlpha = item.opacity ?? 1.0;
+      ctx.textBaseline = 'top';
 
       if (item.fillColor && item.fillColor !== 'transparent') {
         const metrics = ctx.measureText(item.text || '');
@@ -262,9 +265,9 @@ export function renderAnnotationsToDataUrl(
         ctx.fillStyle = item.fillColor;
         ctx.fillRect(
           item.x - pad,
-          item.y - (item.fontSize || 16) - pad,
-          metrics.width + pad * 2,
-          (item.fontSize || 16) * 1.3 + pad * 2
+          item.y - pad,
+          (item.width || metrics.width) + pad * 2,
+          (item.height || fSize * 1.3) + pad * 2
         );
         ctx.fillStyle = item.color || '#000000';
       }
@@ -297,7 +300,7 @@ export async function exportEditedPdf(
   const pdfDoc = await PDFDocument.load(originalPdfBytes);
   const totalOriginalPages = pdfDoc.getPageCount();
 
-  // 1. Process deletions (delete backwards so indices don't shift)
+  // 1. Process deletions
   for (let i = totalOriginalPages - 1; i >= 0; i--) {
     const pageInfo = pages.find((p) => p.pageIndex === i);
     if (pageInfo && pageInfo.deleted) {
