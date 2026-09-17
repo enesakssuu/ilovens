@@ -118,6 +118,37 @@ export async function renderPdfPageToCanvas(
 }
 
 /**
+ * Render PDF text layer for selecting, searching, and copying native text
+ */
+export async function renderPdfTextLayer(
+  pdfDoc: pdfjsLib.PDFDocumentProxy,
+  pageNumber: number,
+  container: HTMLDivElement,
+  scale: number = 1.5,
+  rotation: number = 0
+): Promise<void> {
+  try {
+    const page = await pdfDoc.getPage(pageNumber);
+    const viewport = page.getViewport({ scale, rotation });
+
+    container.innerHTML = '';
+    container.style.width = `${viewport.width}px`;
+    container.style.height = `${viewport.height}px`;
+
+    const textContent = await page.getTextContent();
+    const textLayer = new pdfjsLib.TextLayer({
+      textContentSource: textContent,
+      container: container,
+      viewport: viewport,
+    });
+
+    await textLayer.render();
+  } catch (err) {
+    console.error('Error rendering text layer:', err);
+  }
+}
+
+/**
  * Render an annotation overlay to a high-resolution PNG data URL for a specific page
  */
 export function renderAnnotationsToDataUrl(

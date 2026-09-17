@@ -37,6 +37,38 @@
   }
 }
 
+/* ─── PDF TEXT LAYER (FOR SELECTING & COPYING TEXT IN PDF) ───────── */
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  line-height: 1.0;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 5;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.textLayer span,
+.textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer ::selection {
+  background: rgba(59, 130, 246, 0.4);
+  color: transparent;
+}
+
 /* ─── MESH GRADIENT BACKGROUND ──────────────────────────────── */
 .mesh-bg {
   position: fixed;
