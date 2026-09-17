@@ -19,6 +19,7 @@ import MemeTool from './pages/MemeTool';
 import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
+import PdfEditorTool from './pages/PdfEditorTool';
 import NotFound from './pages/NotFound';
 
 function ScrollToTop() {
@@ -46,6 +47,7 @@ const toolRoutes = [
   { path: 'blur-face', element: <BlurFaceTool /> },
   { path: 'color-palette', element: <ColorPaletteTool /> },
   { path: 'photo-editor', element: <PhotoEditorTool /> },
+  { path: 'pdf-editor', element: <PdfEditorTool /> },
 ];
 
 const validPaths = new Set([

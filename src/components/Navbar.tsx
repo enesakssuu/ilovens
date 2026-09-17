@@ -7,7 +7,7 @@ import {
   Globe, Menu, X, ChevronDown, ArrowRight,
   Minimize2, Maximize2, Crop, RotateCcw, Code2, ShieldOff,
   RefreshCw, ImageDown, Globe2, Stamp, Laugh, Eye,
-  Palette, Wand2, Sparkles
+  Palette, Wand2, Sparkles, FileText
 } from 'lucide-react';
 
 interface ToolLink {
@@ -78,6 +78,7 @@ const useMenuGroups = (isEnglish: boolean, basePath: string): MenuGroup[] => [
     key: 'advanced',
     label: isEnglish ? 'Advanced' : 'İleri Seviye',
     tools: [
+      { icon: <FileText size={15} strokeWidth={1.8} />, label: isEnglish ? 'PDF Editor' : 'PDF Düzenleyici', path: `${basePath}/pdf-editor`, color: 'text-rose-600', badge: isEnglish ? 'New' : 'Yeni' },
       { icon: <Stamp size={15} strokeWidth={1.8} />, label: isEnglish ? 'Add Watermark' : 'Filigran Ekle', path: `${basePath}/watermark`, color: 'text-indigo-600' },
       { icon: <Laugh size={15} strokeWidth={1.8} />, label: 'Meme Generator', path: `${basePath}/meme`, color: 'text-yellow-600' },
       { icon: <Eye size={15} strokeWidth={1.8} />, label: isEnglish ? 'Blur / Censor' : 'Yüz Sansürle', path: `${basePath}/blur-face`, color: 'text-red-500' },
@@ -85,14 +86,14 @@ const useMenuGroups = (isEnglish: boolean, basePath: string): MenuGroup[] => [
       { icon: <Wand2 size={15} strokeWidth={1.8} />, label: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü', path: `${basePath}/photo-editor`, color: 'text-fuchsia-600' },
     ],
     featured: {
-      title: isEnglish ? 'Photo Editor' : 'Fotoğraf Editörü',
+      title: isEnglish ? 'PDF Editor' : 'PDF Düzenleyici',
       desc: isEnglish
-        ? 'Adjust brightness, contrast, saturation and apply filters in real-time with a live preview.'
-        : 'Parlaklık, kontrast, doygunluk ve filtreleri canlı önizleme ile gerçek zamanlı ayarla.',
-      icon: <Wand2 size={26} strokeWidth={1.8} />,
-      iconBg: 'bg-fuchsia-600',
-      path: `${basePath}/photo-editor`,
-      cta: isEnglish ? 'Open Editor' : 'Editörü Aç',
+        ? 'Add text, freehand sign, highlight, redact confidential data and reorder pages.'
+        : 'Metin ekle, serbest imza at, vurgula, hassas verileri sansürle ve sayfaları yönet.',
+      icon: <FileText size={26} strokeWidth={1.8} />,
+      iconBg: 'bg-rose-600',
+      path: `${basePath}/pdf-editor`,
+      cta: isEnglish ? 'Open PDF Editor' : 'PDF Editörünü Aç',
     },
   },
 ];

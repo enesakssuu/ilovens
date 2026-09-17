@@ -82,6 +82,14 @@ const resources = {
         btn: 'Filigran Ekle ve İndir',
         processing: 'İşleniyor...',
       },
+      pdf: {
+        title: 'PDF Düzenleyici',
+        subtitle: 'Metin ekle, imza at, vurgula, sansürle ve sayfaları yönet.',
+        addText: 'Metin Ekle',
+        sign: 'İmza Ekle',
+        redact: 'Sansürle',
+        downloadPdf: 'PDF İndir',
+      },
       common: {
         back: 'Ana Sayfa',
         download: 'İndir',
@@ -170,6 +178,14 @@ const resources = {
         },
         btn: 'Add Watermark & Download',
         processing: 'Processing...',
+      },
+      pdf: {
+        title: 'PDF Editor',
+        subtitle: 'Add text, sign, highlight, redact confidential data and manage pages.',
+        addText: 'Add Text',
+        sign: 'Add Signature',
+        redact: 'Redact',
+        downloadPdf: 'Download PDF',
       },
       common: {
         back: 'Home',

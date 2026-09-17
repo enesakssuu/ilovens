@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   Sparkles, Lock, Zap, ArrowRight,
   Minimize2, Maximize2, Crop, RotateCcw, RefreshCw, Stamp, Laugh, Eye,
-  Palette, Wand2, Code2, ShieldOff, ImageDown, Globe2
+  Palette, Wand2, Code2, ShieldOff, ImageDown, Globe2, FileText
 } from 'lucide-react';
 
 interface ToolItem {
@@ -18,6 +18,16 @@ interface ToolItem {
 }
 
 const useTools = (isEnglish: boolean): ToolItem[] => [
+  {
+    id: 'pdf-editor',
+    icon: <FileText size={20} strokeWidth={1.5} />,
+    title: isEnglish ? 'PDF Editor' : 'PDF Düzenleyici',
+    desc: isEnglish
+      ? 'Add text, draw, sign, highlight, redact sensitive data and manage pages directly in browser.'
+      : 'Tarayıcında doğrudan metin ekle, imza at, vurgula, sansürle ve sayfaları yönet.',
+    iconBg: 'bg-rose-600',
+    badge: isEnglish ? 'New' : 'Yeni',
+  },
   {
     id: 'compress',
     icon: <Minimize2 size={20} strokeWidth={1.5} />,
@@ -167,6 +177,7 @@ const organicScatterProps = [
   { borderRadius: '1.5rem 2.7rem 1.3rem 2.5rem', baseRotate: 3.0, offsetY: 18, offsetX: 0 },
   { borderRadius: '2.6rem 1.3rem 2.5rem 1.5rem', baseRotate: -3.0, offsetY: 6, offsetX: 0 },
   { borderRadius: '1.4rem 2.8rem 1.6rem 2.5rem', baseRotate: 4.5, offsetY: 22, offsetX: 0 },
+  { borderRadius: '2.4rem 1.4rem 2.6rem 1.2rem', baseRotate: -3.6, offsetY: 10, offsetX: 0 },
 ];
 
 import { trackEvent } from '../utils/analytics';
@@ -209,7 +220,7 @@ export default function Home() {
           }}
         >
           <Sparkles size={13} className="text-brand-purple" strokeWidth={2} />
-          {isEnglish ? '14 tools · 100% free · No server uploads' : '14 araç · %100 ücretsiz · Sunucuya gönderilmez'}
+          {isEnglish ? '15 tools · 100% free · No server uploads' : '15 araç · %100 ücretsiz · Sunucuya gönderilmez'}
         </motion.div>
 
         <motion.h1
