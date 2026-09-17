@@ -21,6 +21,7 @@ export interface AnnotationItem {
   fillColor?: string;
   isBold?: boolean;
   isItalic?: boolean;
+  align?: 'left' | 'center' | 'right';
   strokeWidth?: number;
   opacity?: number;
   points?: { x: number; y: number }[];
@@ -100,11 +101,14 @@ export async function renderPdfPageToCanvas(
   const page = await pdfDoc.getPage(pageNumber);
   const viewport = page.getViewport({ scale, rotation });
 
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) return;
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -150,7 +154,7 @@ export async function renderPdfTextLayer(
 }
 
 /**
- * Render an annotation overlay to a high-resolution PNG data URL for a specific page
+ * Render an annotation overlay to a 300+ DPI high-resolution PNG data URL for crystal-clear export
  */
 export function renderAnnotationsToDataUrl(
   annotations: AnnotationItem[],
@@ -160,13 +164,16 @@ export function renderAnnotationsToDataUrl(
   if (annotations.length === 0) return null;
 
   const canvas = document.createElement('canvas');
-  const exportScale = 2.0;
-  canvas.width = width * exportScale;
-  canvas.height = height * exportScale;
+  // 3.5x scale generates ~300 DPI print-ready razor-sharp fidelity
+  const exportScale = 3.5;
+  canvas.width = Math.round(width * exportScale);
+  canvas.height = Math.round(height * exportScale);
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.scale(exportScale, exportScale);
 
   for (const item of annotations) {
@@ -259,20 +266,34 @@ export function renderAnnotationsToDataUrl(
       ctx.globalAlpha = item.opacity ?? 1.0;
       ctx.textBaseline = 'top';
 
+      const lines = (item.text || '').split('\n');
+      const lineHeight = fSize * 1.25;
+      const totalH = lines.length * lineHeight;
+      const boxW = item.width || 100;
+      const boxH = Math.max(item.height || 0, totalH);
+
+      // Clean background mask if enabled
       if (item.fillColor && item.fillColor !== 'transparent') {
-        const metrics = ctx.measureText(item.text || '');
-        const pad = 4;
         ctx.fillStyle = item.fillColor;
-        ctx.fillRect(
-          item.x - pad,
-          item.y - pad,
-          (item.width || metrics.width) + pad * 2,
-          (item.height || fSize * 1.3) + pad * 2
-        );
+        ctx.fillRect(item.x, item.y, boxW, boxH);
         ctx.fillStyle = item.color || '#000000';
       }
 
-      ctx.fillText(item.text || '', item.x, item.y);
+      // Draw each line with alignment
+      lines.forEach((lineText, lineIdx) => {
+        let drawX = item.x;
+        const lineY = item.y + lineIdx * lineHeight;
+
+        if (item.align === 'center') {
+          const metrics = ctx.measureText(lineText);
+          drawX = item.x + (boxW - metrics.width) / 2;
+        } else if (item.align === 'right') {
+          const metrics = ctx.measureText(lineText);
+          drawX = item.x + boxW - metrics.width;
+        }
+
+        ctx.fillText(lineText, drawX, lineY);
+      });
     } else if (item.type === 'image' && item.imageDataUrl) {
       const img = new Image();
       img.src = item.imageDataUrl;

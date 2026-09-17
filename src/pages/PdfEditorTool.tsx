@@ -7,7 +7,7 @@ import {
   Square, Circle, ArrowUpRight, ShieldAlert, ImagePlus,
   Stamp, Check, ChevronLeft, ChevronRight, Upload,
   RefreshCw, Copy, MousePointer, Plus, Minus,
-  Edit3, X
+  Edit3, X, Eraser, AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import {
   loadPdfDocument,
@@ -23,7 +23,17 @@ import { downloadFile } from '../utils/imageProcessor';
 import { trackEvent } from '../utils/analytics';
 import type * as pdfjsLib from 'pdfjs-dist';
 
-type ToolType = 'select' | 'text' | 'pen' | 'highlighter' | 'redact' | 'rect' | 'circle' | 'arrow';
+type ToolType =
+  | 'select'
+  | 'replace'
+  | 'text'
+  | 'pen'
+  | 'highlighter'
+  | 'whiteout'
+  | 'redact'
+  | 'rect'
+  | 'circle'
+  | 'arrow';
 
 const COLOR_PALETTE = [
   '#000000', // Black
@@ -36,24 +46,36 @@ const COLOR_PALETTE = [
   '#ffffff', // White
 ];
 
-const HIGHLIGHTER_COLORS = [
-  '#facc15', // Yellow
-  '#4ade80', // Green
-  '#60a5fa', // Blue
-  '#f472b6', // Pink
-  '#c084fc', // Purple
-];
-
 const FONT_FAMILIES = [
-  { label: 'Inter (Modern)', value: 'Inter, system-ui, sans-serif' },
+  { label: 'Inter (Modern Sans)', value: 'Inter, system-ui, sans-serif' },
   { label: 'Arial (Standart)', value: 'Arial, Helvetica, sans-serif' },
-  { label: 'Times New Roman (Resmi)', value: '"Times New Roman", Times, serif' },
-  { label: 'Courier New (Daktilo)', value: '"Courier New", Courier, monospace' },
-  { label: 'Georgia (Kitap)', value: 'Georgia, serif' },
-  { label: 'Impact (Kalın)', value: 'Impact, sans-serif' },
+  { label: 'Times New Roman (Resmi Serif)', value: '"Times New Roman", Times, serif' },
+  { label: 'Courier New (Daktilo Monospace)', value: '"Courier New", Courier, monospace' },
+  { label: 'Georgia (Kitap Serif)', value: 'Georgia, serif' },
+  { label: 'Impact (Kalın Başlık)', value: 'Impact, sans-serif' },
 ];
 
 type ResizeHandleType = 'nw' | 'ne' | 'se' | 'sw';
+
+interface InPlaceEditorState {
+  isOpen: boolean;
+  isNew: boolean;
+  itemId?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  fillColor: string; // '#ffffff' for whiteout mask or 'transparent'
+  isBold: boolean;
+  isItalic: boolean;
+  align: 'left' | 'center' | 'right';
+  screenX: number;
+  screenY: number;
+}
 
 export default function PdfEditorTool() {
   const { i18n } = useTranslation();
@@ -73,45 +95,31 @@ export default function PdfEditorTool() {
   const [exporting, setExporting] = useState(false);
   const [zoomScale, setZoomScale] = useState<number>(1.25);
 
-  // Tool & Active Global Styling State
+  // Active Tool & Styling Presets
   const [activeTool, setActiveTool] = useState<ToolType>('select');
   const [color, setColor] = useState<string>('#000000');
   const [strokeWidth, setStrokeWidth] = useState<number>(3);
-  const [fontSize, setFontSize] = useState<number>(18);
+  const [fontSize, setFontSize] = useState<number>(16);
   const [fontFamily, setFontFamily] = useState<string>('Inter, system-ui, sans-serif');
   const [isBold, setIsBold] = useState<boolean>(false);
   const [isItalic, setIsItalic] = useState<boolean>(false);
-  const [textFill, setTextFill] = useState<string>('transparent');
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('left');
   const [watermarkText, setWatermarkText] = useState<string>('');
   const [showWatermarkModal, setShowWatermarkModal] = useState<boolean>(false);
 
   // Annotations State (pageIndex -> list of items)
   const [annotations, setAnnotations] = useState<Record<number, AnnotationItem[]>>({});
-  // History for Undo / Redo
   const [history, setHistory] = useState<Record<number, AnnotationItem[]>[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
 
   // Selection & Manipulation state
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 
-  // Modal / Dedicated Text Editor Card
-  const [textEditorCard, setTextEditorCard] = useState<{
-    isOpen: boolean;
-    isNew: boolean;
-    itemId?: string;
-    x: number;
-    y: number;
-    text: string;
-    fontSize: number;
-    fontFamily: string;
-    color: string;
-    isBold: boolean;
-    isItalic: boolean;
-    fillColor: string;
-  } | null>(null);
+  // Dedicated In-Place Precision Text Replacement / Edit Popover
+  const [inPlaceEditor, setInPlaceEditor] = useState<InPlaceEditorState | null>(null);
 
-  // Selected Native Text Popup (when selecting text in PDF)
-  const [selectedTextPopup, setSelectedTextPopup] = useState<{
+  // Native Selected Text Quick Action Popup
+  const [nativeTextPopup, setNativeTextPopup] = useState<{
     text: string;
     x: number;
     y: number;
@@ -121,7 +129,7 @@ export default function PdfEditorTool() {
     screenY: number;
   } | null>(null);
 
-  // Interaction: Dragging an object
+  // Dragging / Resizing interaction states
   const [draggingState, setDraggingState] = useState<{
     id: string;
     startX: number;
@@ -130,7 +138,6 @@ export default function PdfEditorTool() {
     initialItemY: number;
   } | null>(null);
 
-  // Interaction: Resizing an object
   const [resizingState, setResizingState] = useState<{
     id: string;
     handle: ResizeHandleType;
@@ -142,10 +149,10 @@ export default function PdfEditorTool() {
     initialH: number;
   } | null>(null);
 
-  // Interaction: Freehand drawing on canvas
-  const [isDrawingFreehand, setIsDrawingFreehand] = useState(false);
+  // Drawing Box / Strokes interaction states
+  const [isDrawingInteraction, setIsDrawingInteraction] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
-  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [dragStartPoint, setDragStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentBox, setCurrentBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Canvases and refs
@@ -154,11 +161,12 @@ export default function PdfEditorTool() {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get currently selected item
+  // Currently selected item
   const selectedItem = (annotations[currentPageIndex] || []).find((a) => a.id === selectedAnnotationId);
 
-  // Sync toolbar with selected item properties when an item is selected
+  // Sync toolbar when selecting an object
   useEffect(() => {
     if (selectedItem) {
       if (selectedItem.color) setColor(selectedItem.color);
@@ -166,41 +174,25 @@ export default function PdfEditorTool() {
       if (selectedItem.fontFamily) setFontFamily(selectedItem.fontFamily);
       if (selectedItem.isBold !== undefined) setIsBold(selectedItem.isBold);
       if (selectedItem.isItalic !== undefined) setIsItalic(selectedItem.isItalic);
-      if (selectedItem.fillColor !== undefined) setTextFill(selectedItem.fillColor);
+      if (selectedItem.align) setTextAlign(selectedItem.align);
       if (selectedItem.strokeWidth) setStrokeWidth(selectedItem.strokeWidth);
     }
   }, [selectedItem]);
 
-  // Update selected item property helper
-  const updateSelectedItemProperty = (prop: Partial<AnnotationItem>) => {
-    if (!selectedAnnotationId) return;
-    const updatedList = (annotations[currentPageIndex] || []).map((item) => {
-      if (item.id === selectedAnnotationId) {
-        return { ...item, ...prop };
-      }
-      return item;
-    });
-    const updated = { ...annotations, [currentPageIndex]: updatedList };
-    setAnnotations(updated);
-    pushToHistory(updated);
+  // Push annotations to history stack
+  const pushToHistory = (newAnnotations: Record<number, AnnotationItem[]>) => {
+    const nextHistory = history.slice(0, historyIdx + 1);
+    nextHistory.push(JSON.parse(JSON.stringify(newAnnotations)));
+    setHistory(nextHistory);
+    setHistoryIdx(nextHistory.length - 1);
   };
-
-  // Record history
-  const pushToHistory = useCallback((newAnnotations: Record<number, AnnotationItem[]>) => {
-    setHistory((prev) => {
-      const sliced = prev.slice(0, historyIdx + 1);
-      return [...sliced, JSON.parse(JSON.stringify(newAnnotations))];
-    });
-    setHistoryIdx((prev) => prev + 1);
-  }, [historyIdx]);
 
   const undo = () => {
     if (historyIdx > 0) {
       const prev = history[historyIdx - 1];
       setAnnotations(JSON.parse(JSON.stringify(prev)));
-      setHistoryIdx((idx) => idx - 1);
+      setHistoryIdx(historyIdx - 1);
       setSelectedAnnotationId(null);
-      setTextEditorCard(null);
     }
   };
 
@@ -208,57 +200,65 @@ export default function PdfEditorTool() {
     if (historyIdx < history.length - 1) {
       const next = history[historyIdx + 1];
       setAnnotations(JSON.parse(JSON.stringify(next)));
-      setHistoryIdx((idx) => idx + 1);
+      setHistoryIdx(historyIdx + 1);
+      setSelectedAnnotationId(null);
     }
   };
 
-  // Handle PDF file selection
-  const handleFileSelect = async (f: File) => {
-    if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
-      alert(isEnglish ? 'Please upload a valid PDF document.' : 'Lütfen geçerli bir PDF belgesi yükleyin.');
+  // File Upload Handler
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+
+    if (selected.type !== 'application/pdf' && !selected.name.toLowerCase().endsWith('.pdf')) {
+      alert(isEnglish ? 'Please upload a valid PDF file.' : 'Lütfen geçerli bir PDF dosyası yükleyin.');
       return;
     }
 
     setLoading(true);
-    setFile(f);
+    setFile(selected);
+    setCurrentPageIndex(0);
     setAnnotations({});
     setHistory([]);
     setHistoryIdx(-1);
-    setCurrentPageIndex(0);
     setSelectedAnnotationId(null);
-    setSelectedTextPopup(null);
-    setTextEditorCard(null);
+    setInPlaceEditor(null);
+    setNativeTextPopup(null);
 
     try {
-      const { pdfDoc, state } = await loadPdfDocument(f);
+      const { pdfDoc, state } = await loadPdfDocument(selected);
       setPdfProxy(pdfDoc);
       setPdfState(state);
-      setHistory([{}]);
+
+      const initialAnnotations: Record<number, AnnotationItem[]> = {};
+      state.pages.forEach((p) => {
+        initialAnnotations[p.pageIndex] = [];
+      });
+      setAnnotations(initialAnnotations);
+      setHistory([initialAnnotations]);
       setHistoryIdx(0);
 
       trackEvent({
         type: 'tool_use',
         toolId: 'pdf-editor',
         toolName: 'PDF Düzenleyici',
-        fileSizeBefore: f.size,
+        fileSizeBefore: selected.size,
       });
     } catch (err) {
-      console.error('PDF Load Error:', err);
-      alert(isEnglish ? 'Failed to read PDF file. Please try another file.' : 'PDF dosyası okunamadı. Lütfen başka bir dosya deneyin.');
-      setFile(null);
+      console.error('PDF load error:', err);
+      alert(isEnglish ? 'Failed to read PDF document.' : 'PDF belgesi yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Render current page: Base PDF Canvas + Text Layer
+  // Render Base PDF Canvas + Text Layer
   const renderCurrentPage = useCallback(async () => {
     if (!pdfProxy || !pdfState || !baseCanvasRef.current) return;
     const pageInfo = pdfState.pages[currentPageIndex];
     if (!pageInfo || pageInfo.deleted) return;
 
     try {
-      // 1. Render Base Canvas
       await renderPdfPageToCanvas(
         pdfProxy,
         pageInfo.pageNumber,
@@ -267,7 +267,6 @@ export default function PdfEditorTool() {
         pageInfo.rotation
       );
 
-      // 2. Render Native Text Selection Layer
       if (textLayerContainerRef.current) {
         await renderPdfTextLayer(
           pdfProxy,
@@ -282,7 +281,7 @@ export default function PdfEditorTool() {
     }
   }, [pdfProxy, pdfState, currentPageIndex, zoomScale]);
 
-  // Redraw Freehand Canvas Overlay (drawing & highlighters)
+  // Redraw Freehand Overlay Canvas
   const drawFreehandOverlay = useCallback(() => {
     const canvas = overlayCanvasRef.current;
     if (!canvas || !pdfState || !baseCanvasRef.current) return;
@@ -294,20 +293,19 @@ export default function PdfEditorTool() {
 
     canvas.width = baseCanvasRef.current.width;
     canvas.height = baseCanvasRef.current.height;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const currentScale = canvas.width / pageInfo.originalWidth;
     const pageAnnotations = annotations[currentPageIndex] || [];
 
-    // Render stored freehand & line annotations on canvas
+    // Render stored drawings & lines
     for (const item of pageAnnotations) {
       if (item.type === 'draw' || item.type === 'highlighter') {
         if (item.points && item.points.length >= 2) {
           ctx.save();
           ctx.beginPath();
           ctx.strokeStyle = item.color || '#000000';
-          ctx.lineWidth = (item.strokeWidth || 3) * currentScale;
+          ctx.lineWidth = (item.strokeWidth || (item.type === 'highlighter' ? 18 : 3)) * currentScale;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           ctx.globalAlpha = item.opacity ?? (item.type === 'highlighter' ? 0.35 : 1.0);
@@ -357,8 +355,8 @@ export default function PdfEditorTool() {
       }
     }
 
-    // Render active drawing strokes/box
-    if (isDrawingFreehand) {
+    // Render active drawing interaction preview
+    if (isDrawingInteraction) {
       ctx.save();
       if ((activeTool === 'pen' || activeTool === 'highlighter') && currentPoints.length >= 2) {
         ctx.beginPath();
@@ -379,8 +377,23 @@ export default function PdfEditorTool() {
         const w = currentBox.width * currentScale;
         const h = currentBox.height * currentScale;
 
-        if (activeTool === 'redact') {
-          ctx.fillStyle = color === '#ffffff' ? '#ffffff' : '#000000';
+        if (activeTool === 'replace') {
+          // Guided dashed blue selection box for text replacement
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.strokeRect(x, y, w, h);
+          ctx.fillStyle = 'rgba(37, 99, 235, 0.08)';
+          ctx.fillRect(x, y, w, h);
+        } else if (activeTool === 'whiteout') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(x, y, w, h);
+        } else if (activeTool === 'redact') {
+          ctx.fillStyle = '#000000';
           ctx.fillRect(x, y, w, h);
         } else if (activeTool === 'rect') {
           ctx.strokeStyle = color;
@@ -392,28 +405,26 @@ export default function PdfEditorTool() {
           ctx.beginPath();
           ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * Math.PI);
           ctx.stroke();
-        } else if (activeTool === 'arrow') {
-          if (startPoint && currentPoints.length > 0) {
-            const p1 = { x: startPoint.x * currentScale, y: startPoint.y * currentScale };
-            const p2 = { x: currentPoints[currentPoints.length - 1].x * currentScale, y: currentPoints[currentPoints.length - 1].y * currentScale };
-            ctx.strokeStyle = color;
-            ctx.lineWidth = strokeWidth * currentScale;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
+        } else if (activeTool === 'arrow' && dragStartPoint && currentPoints.length > 0) {
+          const p1 = { x: dragStartPoint.x * currentScale, y: dragStartPoint.y * currentScale };
+          const p2 = { x: currentPoints[currentPoints.length - 1].x * currentScale, y: currentPoints[currentPoints.length - 1].y * currentScale };
+          ctx.strokeStyle = color;
+          ctx.lineWidth = strokeWidth * currentScale;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
 
-            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-            const headLen = Math.max(12, strokeWidth * 3.5 * currentScale);
-            ctx.beginPath();
-            ctx.fillStyle = color;
-            ctx.moveTo(p2.x, p2.y);
-            ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
-            ctx.closePath();
-            ctx.fill();
-          }
+          const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+          const headLen = Math.max(12, strokeWidth * 3.5 * currentScale);
+          ctx.beginPath();
+          ctx.fillStyle = color;
+          ctx.moveTo(p2.x, p2.y);
+          ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
+          ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
+          ctx.closePath();
+          ctx.fill();
         }
       }
       ctx.restore();
@@ -422,13 +433,13 @@ export default function PdfEditorTool() {
     pdfState,
     currentPageIndex,
     annotations,
-    isDrawingFreehand,
+    isDrawingInteraction,
     currentPoints,
     currentBox,
     activeTool,
     color,
     strokeWidth,
-    startPoint,
+    dragStartPoint,
   ]);
 
   useEffect(() => {
@@ -439,7 +450,7 @@ export default function PdfEditorTool() {
     drawFreehandOverlay();
   }, [drawFreehandOverlay]);
 
-  // Convert mouse event coordinates to unscaled original PDF coordinates
+  // Convert mouse event coordinates to original unscaled PDF coordinates
   const getPdfCoords = (e: React.MouseEvent) => {
     if (!baseCanvasRef.current || !pdfState) return { x: 0, y: 0 };
     const rect = baseCanvasRef.current.getBoundingClientRect();
@@ -448,7 +459,6 @@ export default function PdfEditorTool() {
 
     const clientX = e.clientX - rect.left;
     const clientY = e.clientY - rect.top;
-
     const scaleFactor = pageInfo.originalWidth / baseCanvasRef.current.width;
     return {
       x: clientX * scaleFactor,
@@ -456,18 +466,17 @@ export default function PdfEditorTool() {
     };
   };
 
-  // Detect native text selection in the PDF
+  // Check Native Text Selection on the PDF Canvas
   const checkNativeTextSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || !baseCanvasRef.current || !pdfState) {
-      setSelectedTextPopup(null);
+      setNativeTextPopup(null);
       return;
     }
 
     const selectedStr = selection.toString().trim();
-    // Only show if at least 2 characters selected inside the PDF
     if (!selectedStr || selectedStr.length < 2) {
-      setSelectedTextPopup(null);
+      setNativeTextPopup(null);
       return;
     }
 
@@ -478,14 +487,13 @@ export default function PdfEditorTool() {
       const pageInfo = pdfState.pages[currentPageIndex];
       if (!pageInfo) return;
 
-      // Check if selection is strictly inside the canvas
       if (
-        rect.left < canvasRect.left ||
-        rect.right > canvasRect.right ||
-        rect.top < canvasRect.top ||
-        rect.bottom > canvasRect.bottom
+        rect.left < canvasRect.left - 10 ||
+        rect.right > canvasRect.right + 10 ||
+        rect.top < canvasRect.top - 10 ||
+        rect.bottom > canvasRect.bottom + 10
       ) {
-        setSelectedTextPopup(null);
+        setNativeTextPopup(null);
         return;
       }
 
@@ -495,7 +503,7 @@ export default function PdfEditorTool() {
       const unscaledW = rect.width * scaleFactor;
       const unscaledH = rect.height * scaleFactor;
 
-      setSelectedTextPopup({
+      setNativeTextPopup({
         text: selectedStr,
         x: Math.max(0, unscaledX),
         y: Math.max(0, unscaledY),
@@ -505,45 +513,52 @@ export default function PdfEditorTool() {
         screenY: rect.top - 10,
       });
     } catch {
-      setSelectedTextPopup(null);
+      setNativeTextPopup(null);
     }
   };
 
-  // Open Edit Card to Replace Selected Text
-  const handleOpenReplaceCard = () => {
-    if (!selectedTextPopup || !pdfState) return;
+  // Launch In-Place Replacement from Native Selection
+  const handleLaunchInPlaceFromNative = () => {
+    if (!nativeTextPopup || !pdfState) return;
 
-    setTextEditorCard({
+    const estimatedFontSize = Math.max(11, Math.min(36, Math.round(nativeTextPopup.height * 0.9)));
+
+    setInPlaceEditor({
       isOpen: true,
       isNew: true,
-      x: selectedTextPopup.x,
-      y: selectedTextPopup.y,
-      text: selectedTextPopup.text,
-      fontSize: Math.max(12, Math.min(36, Math.round(selectedTextPopup.height * 0.9))),
+      x: nativeTextPopup.x,
+      y: nativeTextPopup.y,
+      width: Math.max(60, nativeTextPopup.width),
+      height: Math.max(20, nativeTextPopup.height),
+      text: nativeTextPopup.text,
+      fontSize: estimatedFontSize,
       fontFamily: 'Inter, system-ui, sans-serif',
       color: '#000000',
+      fillColor: '#ffffff', // Clean whiteout mask
       isBold: false,
       isItalic: false,
-      fillColor: '#ffffff', // Clean whiteout background to cover old text seamlessly
+      align: 'left',
+      screenX: nativeTextPopup.screenX,
+      screenY: nativeTextPopup.screenY,
     });
 
-    setSelectedTextPopup(null);
+    setNativeTextPopup(null);
     window.getSelection()?.removeAllRanges();
   };
 
-  // Censor / Redact Selected PDF Text
-  const handleRedactSelectedText = () => {
-    if (!selectedTextPopup || !pdfState) return;
+  // Launch In-Place Redact from Native Selection
+  const handleRedactNativeText = () => {
+    if (!nativeTextPopup || !pdfState) return;
 
     const redactId = 'ann_redact_' + Date.now();
     const redactBox: AnnotationItem = {
       id: redactId,
       type: 'redact',
       pageIndex: currentPageIndex,
-      x: Math.max(0, selectedTextPopup.x - 2),
-      y: Math.max(0, selectedTextPopup.y - 2),
-      width: selectedTextPopup.width + 4,
-      height: selectedTextPopup.height + 4,
+      x: Math.max(0, nativeTextPopup.x - 2),
+      y: Math.max(0, nativeTextPopup.y - 2),
+      width: nativeTextPopup.width + 4,
+      height: nativeTextPopup.height + 4,
       color: '#000000',
       opacity: 1.0,
     };
@@ -555,73 +570,67 @@ export default function PdfEditorTool() {
 
     setAnnotations(updated);
     pushToHistory(updated);
-    setSelectedTextPopup(null);
+    setNativeTextPopup(null);
     window.getSelection()?.removeAllRanges();
   };
 
-  // Save Text from the Focused Edit Card
-  const handleSaveTextCard = () => {
-    if (!textEditorCard) return;
+  // Apply and Save In-Place Text (creates high-fidelity text annotation with seamless whiteout mask)
+  const handleApplyInPlaceText = () => {
+    if (!inPlaceEditor || !inPlaceEditor.text.trim()) {
+      setInPlaceEditor(null);
+      return;
+    }
 
-    if (textEditorCard.isNew) {
-      // If replacing or adding new text
-      const newTextId = 'ann_text_' + Date.now();
-      const newItems: AnnotationItem[] = [];
+    const calculatedWidth = Math.max(
+      inPlaceEditor.width || 60,
+      inPlaceEditor.text.length * (inPlaceEditor.fontSize * 0.6) + 12
+    );
+    const calculatedHeight = Math.max(
+      inPlaceEditor.height || 20,
+      inPlaceEditor.fontSize * 1.35
+    );
 
-      // If background is whiteout, add whiteout block underneath
-      if (textEditorCard.fillColor === '#ffffff') {
-        newItems.push({
-          id: 'ann_bg_' + Date.now(),
-          type: 'redact',
-          pageIndex: currentPageIndex,
-          x: Math.max(0, textEditorCard.x - 2),
-          y: Math.max(0, textEditorCard.y - 2),
-          width: Math.max(80, textEditorCard.text.length * (textEditorCard.fontSize * 0.6) + 12),
-          height: textEditorCard.fontSize * 1.35 + 4,
-          color: '#ffffff',
-          opacity: 1.0,
-        });
-      }
-
-      newItems.push({
-        id: newTextId,
+    if (inPlaceEditor.isNew) {
+      const newItem: AnnotationItem = {
+        id: 'ann_text_' + Date.now(),
         type: 'text',
         pageIndex: currentPageIndex,
-        x: textEditorCard.x,
-        y: textEditorCard.y,
-        width: Math.max(100, textEditorCard.text.length * (textEditorCard.fontSize * 0.6) + 16),
-        height: Math.max(28, textEditorCard.fontSize * 1.4),
-        text: textEditorCard.text,
-        fontSize: textEditorCard.fontSize,
-        fontFamily: textEditorCard.fontFamily,
-        color: textEditorCard.color,
-        fillColor: textEditorCard.fillColor === '#ffffff' ? '#ffffff' : 'transparent',
-        isBold: textEditorCard.isBold,
-        isItalic: textEditorCard.isItalic,
+        x: inPlaceEditor.x,
+        y: inPlaceEditor.y,
+        width: calculatedWidth,
+        height: calculatedHeight,
+        text: inPlaceEditor.text,
+        fontSize: inPlaceEditor.fontSize,
+        fontFamily: inPlaceEditor.fontFamily,
+        color: inPlaceEditor.color,
+        fillColor: inPlaceEditor.fillColor,
+        isBold: inPlaceEditor.isBold,
+        isItalic: inPlaceEditor.isItalic,
+        align: inPlaceEditor.align,
         opacity: 1.0,
-      });
+      };
 
       const updated = {
         ...annotations,
-        [currentPageIndex]: [...(annotations[currentPageIndex] || []), ...newItems],
+        [currentPageIndex]: [...(annotations[currentPageIndex] || []), newItem],
       };
       setAnnotations(updated);
       pushToHistory(updated);
-    } else if (textEditorCard.itemId) {
-      // Editing existing text item
+    } else if (inPlaceEditor.itemId) {
       const updatedList = (annotations[currentPageIndex] || []).map((item) => {
-        if (item.id === textEditorCard.itemId) {
+        if (item.id === inPlaceEditor.itemId) {
           return {
             ...item,
-            text: textEditorCard.text,
-            fontSize: textEditorCard.fontSize,
-            fontFamily: textEditorCard.fontFamily,
-            color: textEditorCard.color,
-            fillColor: textEditorCard.fillColor,
-            isBold: textEditorCard.isBold,
-            isItalic: textEditorCard.isItalic,
-            width: Math.max(item.width || 80, textEditorCard.text.length * (textEditorCard.fontSize * 0.6) + 16),
-            height: Math.max(item.height || 28, textEditorCard.fontSize * 1.4),
+            text: inPlaceEditor.text,
+            fontSize: inPlaceEditor.fontSize,
+            fontFamily: inPlaceEditor.fontFamily,
+            color: inPlaceEditor.color,
+            fillColor: inPlaceEditor.fillColor,
+            isBold: inPlaceEditor.isBold,
+            isItalic: inPlaceEditor.isItalic,
+            align: inPlaceEditor.align,
+            width: calculatedWidth,
+            height: calculatedHeight,
           };
         }
         return item;
@@ -631,178 +640,250 @@ export default function PdfEditorTool() {
       pushToHistory(updated);
     }
 
-    setTextEditorCard(null);
+    setInPlaceEditor(null);
     setSelectedAnnotationId(null);
     setActiveTool('select');
   };
 
-  // Canvas Mouse Down
+  // Canvas Mouse Interaction Handlers
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!pdfState) return;
     const coords = getPdfCoords(e);
 
     if (activeTool === 'select') {
       setSelectedAnnotationId(null);
-      setTextEditorCard(null);
+      setInPlaceEditor(null);
       return;
     }
 
     if (activeTool === 'text') {
-      // Open clean text editor card at click location
-      setTextEditorCard({
+      // Add text at click position
+      const clientRect = baseCanvasRef.current?.getBoundingClientRect();
+      const screenX = clientRect ? e.clientX : window.innerWidth / 2;
+      const screenY = clientRect ? e.clientY : window.innerHeight / 2;
+
+      setInPlaceEditor({
         isOpen: true,
         isNew: true,
         x: coords.x,
         y: coords.y,
+        width: 140,
+        height: 28,
         text: '',
         fontSize,
         fontFamily,
         color,
+        fillColor: 'transparent',
         isBold,
         isItalic,
-        fillColor: textFill,
+        align: textAlign,
+        screenX,
+        screenY,
       });
       return;
     }
 
-    // Pen / Highlighter / Shapes
-    setIsDrawingFreehand(true);
-    setStartPoint(coords);
+    // For replace, pen, highlighter, whiteout, redact, shapes
+    setIsDrawingInteraction(true);
+    setDragStartPoint(coords);
     setCurrentPoints([coords]);
 
-    if (['rect', 'circle', 'redact'].includes(activeTool)) {
+    if (['replace', 'whiteout', 'redact', 'rect', 'circle'].includes(activeTool)) {
       setCurrentBox({ x: coords.x, y: coords.y, width: 0, height: 0 });
     }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawingFreehand || !startPoint) return;
+    if (!isDrawingInteraction || !dragStartPoint) return;
     const coords = getPdfCoords(e);
 
-    if (activeTool === 'pen' || activeTool === 'highlighter') {
-      setCurrentPoints((prev) => [...prev, coords]);
-    } else if (['rect', 'circle', 'redact'].includes(activeTool)) {
-      const minX = Math.min(startPoint.x, coords.x);
-      const minY = Math.min(startPoint.y, coords.y);
-      const width = Math.abs(coords.x - startPoint.x);
-      const height = Math.abs(coords.y - startPoint.y);
-      setCurrentBox({ x: minX, y: minY, width, height });
-    } else if (activeTool === 'arrow') {
-      setCurrentPoints([startPoint, coords]);
+    if (activeTool === 'pen' || activeTool === 'highlighter' || activeTool === 'arrow') {
+      setCurrentPoints((pts) => [...pts, coords]);
+    } else if (['replace', 'whiteout', 'redact', 'rect', 'circle'].includes(activeTool)) {
+      const x = Math.min(dragStartPoint.x, coords.x);
+      const y = Math.min(dragStartPoint.y, coords.y);
+      const width = Math.abs(coords.x - dragStartPoint.x);
+      const height = Math.abs(coords.y - dragStartPoint.y);
+      setCurrentBox({ x, y, width, height });
     }
   };
 
-  const handleCanvasMouseUp = () => {
-    if (!isDrawingFreehand || !startPoint || !pdfState) {
-      setIsDrawingFreehand(false);
+  const handleCanvasMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawingInteraction || !dragStartPoint || !pdfState) {
+      setIsDrawingInteraction(false);
+      setDragStartPoint(null);
+      setCurrentBox(null);
       return;
     }
 
-    const newItemId = 'ann_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
-    let newAnnotation: AnnotationItem | null = null;
+    const coords = getPdfCoords(e);
+    const boxX = Math.min(dragStartPoint.x, coords.x);
+    const boxY = Math.min(dragStartPoint.y, coords.y);
+    const boxW = Math.max(Math.abs(coords.x - dragStartPoint.x), 10);
+    const boxH = Math.max(Math.abs(coords.y - dragStartPoint.y), 10);
 
-    if (activeTool === 'pen' && currentPoints.length >= 2) {
-      newAnnotation = {
-        id: newItemId,
-        type: 'draw',
-        pageIndex: currentPageIndex,
-        x: 0,
-        y: 0,
-        points: currentPoints,
+    if (activeTool === 'replace') {
+      // Open in-place precision replacement popover
+      const clientRect = baseCanvasRef.current?.getBoundingClientRect();
+      const pageInfo = pdfState.pages[currentPageIndex];
+      const scaleRatio = clientRect && pageInfo ? clientRect.width / pageInfo.originalWidth : 1;
+
+      const screenX = clientRect ? clientRect.left + (boxX + boxW / 2) * scaleRatio : e.clientX;
+      const screenY = clientRect ? clientRect.top + boxY * scaleRatio : e.clientY;
+      const autoFontSize = Math.max(11, Math.min(48, Math.round(boxH * 0.85)));
+
+      setInPlaceEditor({
+        isOpen: true,
+        isNew: true,
+        x: boxX,
+        y: boxY,
+        width: Math.max(80, boxW),
+        height: Math.max(22, boxH),
+        text: '',
+        fontSize: autoFontSize,
+        fontFamily,
         color,
-        strokeWidth,
-        opacity: 1.0,
-      };
-    } else if (activeTool === 'highlighter' && currentPoints.length >= 2) {
-      newAnnotation = {
-        id: newItemId,
-        type: 'highlighter',
-        pageIndex: currentPageIndex,
-        x: 0,
-        y: 0,
-        points: currentPoints,
-        color,
-        strokeWidth: 18,
-        opacity: 0.35,
-      };
-    } else if (activeTool === 'redact' && currentBox && currentBox.width > 5 && currentBox.height > 5) {
-      newAnnotation = {
-        id: newItemId,
-        type: 'redact',
-        pageIndex: currentPageIndex,
-        x: currentBox.x,
-        y: currentBox.y,
-        width: currentBox.width,
-        height: currentBox.height,
-        color: color === '#ffffff' ? '#ffffff' : '#000000',
-        opacity: 1.0,
-      };
-    } else if (activeTool === 'rect' && currentBox && currentBox.width > 5 && currentBox.height > 5) {
-      newAnnotation = {
-        id: newItemId,
-        type: 'rect',
-        pageIndex: currentPageIndex,
-        x: currentBox.x,
-        y: currentBox.y,
-        width: currentBox.width,
-        height: currentBox.height,
-        color,
-        strokeWidth,
-        fillColor: textFill,
-        opacity: 1.0,
-      };
-    } else if (activeTool === 'circle' && currentBox && currentBox.width > 5 && currentBox.height > 5) {
-      newAnnotation = {
-        id: newItemId,
-        type: 'circle',
-        pageIndex: currentPageIndex,
-        x: currentBox.x,
-        y: currentBox.y,
-        width: currentBox.width,
-        height: currentBox.height,
-        color,
-        strokeWidth,
-        fillColor: textFill,
-        opacity: 1.0,
-      };
-    } else if (activeTool === 'arrow' && currentPoints.length >= 2) {
-      newAnnotation = {
-        id: newItemId,
-        type: 'arrow',
-        pageIndex: currentPageIndex,
-        x: 0,
-        y: 0,
-        points: currentPoints,
-        color,
-        strokeWidth,
-        opacity: 1.0,
-      };
+        fillColor: '#ffffff', // Seamless whiteout background
+        isBold,
+        isItalic,
+        align: textAlign,
+        screenX,
+        screenY,
+      });
+
+      setIsDrawingInteraction(false);
+      setDragStartPoint(null);
+      setCurrentBox(null);
+      return;
     }
 
-    if (newAnnotation) {
+    if (activeTool === 'whiteout') {
+      const whiteoutId = 'ann_whiteout_' + Date.now();
+      const whiteoutItem: AnnotationItem = {
+        id: whiteoutId,
+        type: 'redact',
+        pageIndex: currentPageIndex,
+        x: boxX,
+        y: boxY,
+        width: boxW,
+        height: boxH,
+        color: '#ffffff',
+        opacity: 1.0,
+      };
+
       const updated = {
         ...annotations,
-        [currentPageIndex]: [...(annotations[currentPageIndex] || []), newAnnotation],
+        [currentPageIndex]: [...(annotations[currentPageIndex] || []), whiteoutItem],
       };
       setAnnotations(updated);
       pushToHistory(updated);
+      setSelectedAnnotationId(whiteoutId);
+      setActiveTool('select');
+    } else if (activeTool === 'redact') {
+      const redactId = 'ann_redact_' + Date.now();
+      const redactItem: AnnotationItem = {
+        id: redactId,
+        type: 'redact',
+        pageIndex: currentPageIndex,
+        x: boxX,
+        y: boxY,
+        width: boxW,
+        height: boxH,
+        color: '#000000',
+        opacity: 1.0,
+      };
 
-      if (['redact', 'rect', 'circle'].includes(activeTool)) {
-        setSelectedAnnotationId(newItemId);
-        setActiveTool('select');
+      const updated = {
+        ...annotations,
+        [currentPageIndex]: [...(annotations[currentPageIndex] || []), redactItem],
+      };
+      setAnnotations(updated);
+      pushToHistory(updated);
+      setSelectedAnnotationId(redactId);
+      setActiveTool('select');
+    } else if (activeTool === 'rect' || activeTool === 'circle') {
+      const shapeId = `ann_${activeTool}_${Date.now()}`;
+      const shapeItem: AnnotationItem = {
+        id: shapeId,
+        type: activeTool,
+        pageIndex: currentPageIndex,
+        x: boxX,
+        y: boxY,
+        width: boxW,
+        height: boxH,
+        color,
+        fillColor: 'transparent',
+        strokeWidth,
+        opacity: 1.0,
+      };
+
+      const updated = {
+        ...annotations,
+        [currentPageIndex]: [...(annotations[currentPageIndex] || []), shapeItem],
+      };
+      setAnnotations(updated);
+      pushToHistory(updated);
+      setSelectedAnnotationId(shapeId);
+      setActiveTool('select');
+    } else if (activeTool === 'pen' || activeTool === 'highlighter') {
+      if (currentPoints.length >= 2) {
+        const drawId = `ann_${activeTool}_${Date.now()}`;
+        const drawItem: AnnotationItem = {
+          id: drawId,
+          type: activeTool === 'highlighter' ? 'highlighter' : 'draw',
+          pageIndex: currentPageIndex,
+          x: 0,
+          y: 0,
+          points: currentPoints,
+          color,
+          strokeWidth: activeTool === 'highlighter' ? 18 : strokeWidth,
+          opacity: activeTool === 'highlighter' ? 0.35 : 1.0,
+        };
+
+        const updated = {
+          ...annotations,
+          [currentPageIndex]: [...(annotations[currentPageIndex] || []), drawItem],
+        };
+        setAnnotations(updated);
+        pushToHistory(updated);
+      }
+    } else if (activeTool === 'arrow') {
+      if (currentPoints.length >= 2) {
+        const arrowId = `ann_arrow_${Date.now()}`;
+        const arrowItem: AnnotationItem = {
+          id: arrowId,
+          type: 'arrow',
+          pageIndex: currentPageIndex,
+          x: 0,
+          y: 0,
+          points: [dragStartPoint, currentPoints[currentPoints.length - 1]],
+          color,
+          strokeWidth,
+          opacity: 1.0,
+        };
+
+        const updated = {
+          ...annotations,
+          [currentPageIndex]: [...(annotations[currentPageIndex] || []), arrowItem],
+        };
+        setAnnotations(updated);
+        pushToHistory(updated);
       }
     }
 
-    setIsDrawingFreehand(false);
+    setIsDrawingInteraction(false);
+    setDragStartPoint(null);
     setCurrentPoints([]);
     setCurrentBox(null);
-    setStartPoint(null);
   };
 
-  // ── INTERACTIVE OBJECT DRAG & RESIZE HANDLING ───────────────────────────
+  // Object Dragging & Resizing Handlers
   const startDragObject = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setSelectedAnnotationId(id);
+    setInPlaceEditor(null);
+    setNativeTextPopup(null);
+
     const item = (annotations[currentPageIndex] || []).find((a) => a.id === id);
     if (!item) return;
 
@@ -828,7 +909,7 @@ export default function PdfEditorTool() {
       startY: e.clientY,
       initialX: item.x,
       initialY: item.y,
-      initialW: item.width || 120,
+      initialW: item.width || 100,
       initialH: item.height || 40,
     });
   };
@@ -840,30 +921,24 @@ export default function PdfEditorTool() {
 
     const scaleFactor = pageInfo.originalWidth / baseCanvasRef.current.width;
 
-    // Handle Dragging Object
     if (draggingState) {
-      const dx = (e.clientX - draggingState.startX) * scaleFactor;
-      const dy = (e.clientY - draggingState.startY) * scaleFactor;
+      const deltaX = (e.clientX - draggingState.startX) * scaleFactor;
+      const deltaY = (e.clientY - draggingState.startY) * scaleFactor;
 
       const updatedList = (annotations[currentPageIndex] || []).map((item) => {
         if (item.id === draggingState.id) {
           return {
             ...item,
-            x: Math.max(0, Math.min(pageInfo.originalWidth - (item.width || 20), draggingState.initialItemX + dx)),
-            y: Math.max(0, Math.min(pageInfo.originalHeight - (item.height || 20), draggingState.initialItemY + dy)),
+            x: Math.max(0, Math.min(pageInfo.originalWidth - 20, draggingState.initialItemX + deltaX)),
+            y: Math.max(0, Math.min(pageInfo.originalHeight - 20, draggingState.initialItemY + deltaY)),
           };
         }
         return item;
       });
-
       setAnnotations({ ...annotations, [currentPageIndex]: updatedList });
-      return;
-    }
-
-    // Handle Resizing Object
-    if (resizingState) {
-      const dx = (e.clientX - resizingState.startX) * scaleFactor;
-      const dy = (e.clientY - resizingState.startY) * scaleFactor;
+    } else if (resizingState) {
+      const deltaX = (e.clientX - resizingState.startX) * scaleFactor;
+      const deltaY = (e.clientY - resizingState.startY) * scaleFactor;
 
       const updatedList = (annotations[currentPageIndex] || []).map((item) => {
         if (item.id === resizingState.id) {
@@ -872,39 +947,26 @@ export default function PdfEditorTool() {
           let newW = resizingState.initialW;
           let newH = resizingState.initialH;
 
-          if (resizingState.handle.includes('e')) {
-            newW = Math.max(30, resizingState.initialW + dx);
-          }
-          if (resizingState.handle.includes('s')) {
-            newH = Math.max(16, resizingState.initialH + dy);
-          }
+          if (resizingState.handle.includes('e')) newW = Math.max(20, resizingState.initialW + deltaX);
+          if (resizingState.handle.includes('s')) newH = Math.max(14, resizingState.initialH + deltaY);
           if (resizingState.handle.includes('w')) {
-            const possibleW = resizingState.initialW - dx;
-            if (possibleW >= 30) {
-              newW = possibleW;
-              newX = resizingState.initialX + dx;
-            }
+            newW = Math.max(20, resizingState.initialW - deltaX);
+            newX = resizingState.initialX + deltaX;
           }
           if (resizingState.handle.includes('n')) {
-            const possibleH = resizingState.initialH - dy;
-            if (possibleH >= 16) {
-              newH = possibleH;
-              newY = resizingState.initialY + dy;
-            }
+            newH = Math.max(14, resizingState.initialH - deltaY);
+            newY = resizingState.initialY + deltaY;
           }
 
           return { ...item, x: newX, y: newY, width: newW, height: newH };
         }
         return item;
       });
-
       setAnnotations({ ...annotations, [currentPageIndex]: updatedList });
     }
   };
 
   const handleGlobalPointerUp = () => {
-    checkNativeTextSelection();
-
     if (draggingState || resizingState) {
       pushToHistory(annotations);
       setDraggingState(null);
@@ -912,138 +974,133 @@ export default function PdfEditorTool() {
     }
   };
 
-  // Add Signature / Stamp Image
-  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const imgFile = e.target.files?.[0];
-    if (!imgFile || !pdfState) return;
-
-    const pageInfo = pdfState.pages[currentPageIndex];
-    const reader = new FileReader();
-
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const aspect = img.width / img.height;
-        const targetWidth = Math.min(200, (pageInfo?.originalWidth || 600) * 0.35);
-        const targetHeight = targetWidth / aspect;
-
-        const posX = Math.max(20, ((pageInfo?.originalWidth || 600) - targetWidth) / 2);
-        const posY = Math.max(20, ((pageInfo?.originalHeight || 800) - targetHeight) / 2);
-
-        const newStampId = 'ann_stamp_' + Date.now();
-        const newStamp: AnnotationItem = {
-          id: newStampId,
-          type: 'image',
-          pageIndex: currentPageIndex,
-          x: posX,
-          y: posY,
-          width: targetWidth,
-          height: targetHeight,
-          imageDataUrl: dataUrl,
-          opacity: 1.0,
-        };
-
-        const updated = {
-          ...annotations,
-          [currentPageIndex]: [...(annotations[currentPageIndex] || []), newStamp],
-        };
-        setAnnotations(updated);
-        pushToHistory(updated);
-        setSelectedAnnotationId(newStampId);
-        setActiveTool('select');
-      };
-      img.src = dataUrl;
-    };
-
-    reader.readAsDataURL(imgFile);
-    e.target.value = '';
-  };
-
-  // Open Edit Card for Existing Text Item
+  // Edit existing text item
   const handleEditTextItem = (item: AnnotationItem) => {
-    setTextEditorCard({
+    if (!baseCanvasRef.current || !pdfState) return;
+    const clientRect = baseCanvasRef.current.getBoundingClientRect();
+    const pageInfo = pdfState.pages[currentPageIndex];
+    const scaleRatio = clientRect && pageInfo ? clientRect.width / pageInfo.originalWidth : 1;
+
+    const screenX = clientRect ? clientRect.left + (item.x + (item.width || 60) / 2) * scaleRatio : window.innerWidth / 2;
+    const screenY = clientRect ? clientRect.top + item.y * scaleRatio : window.innerHeight / 2;
+
+    setInPlaceEditor({
       isOpen: true,
       isNew: false,
       itemId: item.id,
       x: item.x,
       y: item.y,
+      width: item.width || 80,
+      height: item.height || 28,
       text: item.text || '',
-      fontSize: item.fontSize || 18,
+      fontSize: item.fontSize || 16,
       fontFamily: item.fontFamily || 'Inter, system-ui, sans-serif',
       color: item.color || '#000000',
+      fillColor: item.fillColor || 'transparent',
       isBold: !!item.isBold,
       isItalic: !!item.isItalic,
-      fillColor: item.fillColor || 'transparent',
+      align: item.align || 'left',
+      screenX,
+      screenY,
     });
   };
 
-  // Duplicate Selected Object
-  const handleDuplicateSelected = () => {
-    if (!selectedAnnotationId) return;
-    const item = (annotations[currentPageIndex] || []).find((a) => a.id === selectedAnnotationId);
-    if (!item) return;
-
-    const cloneId = 'ann_clone_' + Date.now();
-    const clonedItem: AnnotationItem = {
-      ...JSON.parse(JSON.stringify(item)),
-      id: cloneId,
-      x: item.x + 20,
-      y: item.y + 20,
-    };
-
-    const updated = {
-      ...annotations,
-      [currentPageIndex]: [...(annotations[currentPageIndex] || []), clonedItem],
-    };
-    setAnnotations(updated);
-    pushToHistory(updated);
-    setSelectedAnnotationId(cloneId);
-  };
-
-  // Delete Selected Annotation
+  // Delete & Duplicate handlers
   const handleDeleteSelected = () => {
     if (!selectedAnnotationId) return;
-    const updatedList = (annotations[currentPageIndex] || []).filter(
-      (item) => item.id !== selectedAnnotationId
-    );
-    const updated = { ...annotations, [currentPageIndex]: updatedList };
+    const updated = {
+      ...annotations,
+      [currentPageIndex]: (annotations[currentPageIndex] || []).filter((a) => a.id !== selectedAnnotationId),
+    };
     setAnnotations(updated);
     pushToHistory(updated);
     setSelectedAnnotationId(null);
-    setTextEditorCard(null);
   };
 
-  // Page Operations
-  const handleRotatePage = (clockwise: boolean = true) => {
+  const handleDuplicateSelected = () => {
+    if (!selectedItem) return;
+    const newId = `ann_${selectedItem.type}_${Date.now()}`;
+    const duplicate: AnnotationItem = {
+      ...selectedItem,
+      id: newId,
+      x: selectedItem.x + 15,
+      y: selectedItem.y + 15,
+    };
+    const updated = {
+      ...annotations,
+      [currentPageIndex]: [...(annotations[currentPageIndex] || []), duplicate],
+    };
+    setAnnotations(updated);
+    pushToHistory(updated);
+    setSelectedAnnotationId(newId);
+  };
+
+  // Signature Upload
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const imgFile = e.target.files?.[0];
+    if (!imgFile || !pdfState) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (!dataUrl) return;
+
+      const pageInfo = pdfState.pages[currentPageIndex];
+      const imgId = 'ann_img_' + Date.now();
+      const newImgItem: AnnotationItem = {
+        id: imgId,
+        type: 'image',
+        pageIndex: currentPageIndex,
+        x: pageInfo ? pageInfo.originalWidth / 2 - 80 : 100,
+        y: pageInfo ? pageInfo.originalHeight / 2 - 40 : 100,
+        width: 160,
+        height: 80,
+        imageDataUrl: dataUrl,
+        opacity: 1.0,
+      };
+
+      const updated = {
+        ...annotations,
+        [currentPageIndex]: [...(annotations[currentPageIndex] || []), newImgItem],
+      };
+      setAnnotations(updated);
+      pushToHistory(updated);
+      setSelectedAnnotationId(imgId);
+      setActiveTool('select');
+    };
+    reader.readAsDataURL(imgFile);
+  };
+
+  // Rotate / Delete Page
+  const handleRotatePage = (clockwise = true) => {
     if (!pdfState) return;
-    const delta = clockwise ? 90 : 270;
+    const delta = clockwise ? 90 : -90;
     const updatedPages = pdfState.pages.map((p, idx) => {
       if (idx === currentPageIndex) {
-        return { ...p, rotation: (p.rotation + delta) % 360 };
+        return { ...p, rotation: (p.rotation + delta + 360) % 360 };
       }
       return p;
     });
-
     setPdfState({ ...pdfState, pages: updatedPages });
   };
 
-  const handleDeletePage = (pageIdx: number) => {
+  const handleDeletePage = () => {
     if (!pdfState) return;
-    const remainingActive = pdfState.pages.filter((p) => !p.deleted);
-    if (remainingActive.length <= 1) {
-      alert(isEnglish ? 'A document must have at least 1 active page.' : 'Belgede en az 1 aktif sayfa kalmalıdır.');
+    const activePages = pdfState.pages.filter((p) => !p.deleted);
+    if (activePages.length <= 1) {
+      alert(isEnglish ? 'Cannot delete the only remaining page.' : 'Son kalan sayfayı silemezsiniz.');
       return;
     }
 
     const updatedPages = pdfState.pages.map((p, idx) => {
-      if (idx === pageIdx) return { ...p, deleted: true };
+      if (idx === currentPageIndex) {
+        return { ...p, deleted: true };
+      }
       return p;
     });
-
     setPdfState({ ...pdfState, pages: updatedPages });
 
-    const nextActive = updatedPages.findIndex((p, idx) => !p.deleted && idx >= pageIdx);
+    const nextActive = updatedPages.findIndex((p, idx) => !p.deleted && idx > currentPageIndex);
     if (nextActive !== -1) {
       setCurrentPageIndex(nextActive);
     } else {
@@ -1052,7 +1109,7 @@ export default function PdfEditorTool() {
     }
   };
 
-  // Export PDF with lossless vector and overlay embedding
+  // Export PDF (Lossless Vector & High-Res Overlay)
   const handleDownloadPdf = async () => {
     if (!pdfState || !file) return;
     setExporting(true);
@@ -1086,7 +1143,7 @@ export default function PdfEditorTool() {
     }
   };
 
-  // Export Single Page as PNG
+  // Export Current Page as Image
   const handleDownloadCurrentPageImage = () => {
     if (!baseCanvasRef.current || !pdfState || !file) return;
 
@@ -1094,18 +1151,19 @@ export default function PdfEditorTool() {
     if (!pageInfo) return;
 
     const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = baseCanvasRef.current.width;
-    exportCanvas.height = baseCanvasRef.current.height;
+    exportCanvas.width = baseCanvasRef.current.width * 2;
+    exportCanvas.height = baseCanvasRef.current.height * 2;
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
+    ctx.scale(2, 2);
     ctx.drawImage(baseCanvasRef.current, 0, 0);
 
     if (overlayCanvasRef.current) {
       ctx.drawImage(overlayCanvasRef.current, 0, 0);
     }
 
-    const currentScale = exportCanvas.width / pageInfo.originalWidth;
+    const currentScale = baseCanvasRef.current.width / pageInfo.originalWidth;
     const pageAnns = annotations[currentPageIndex] || [];
 
     for (const item of pageAnns) {
@@ -1143,7 +1201,7 @@ export default function PdfEditorTool() {
 
   const activePageInfo = pdfState?.pages[currentPageIndex];
   const activePages = pdfState?.pages.filter((p) => !p.deleted) || [];
-  const currentScaleRatio = (baseCanvasRef.current && activePageInfo)
+  const currentScaleRatio = baseCanvasRef.current && activePageInfo
     ? baseCanvasRef.current.width / activePageInfo.originalWidth
     : zoomScale;
 
@@ -1151,11 +1209,9 @@ export default function PdfEditorTool() {
     (item) => ['text', 'image', 'rect', 'circle', 'redact'].includes(item.type)
   );
 
-  const isTextContextActive = activeTool === 'text' || (selectedItem && selectedItem.type === 'text');
-
   return (
     <div
-      className="w-full max-w-[1580px] mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col flex-1"
+      className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col flex-1 select-none"
       onMouseMove={handleGlobalPointerMove}
       onMouseUp={handleGlobalPointerUp}
     >
@@ -1169,35 +1225,33 @@ export default function PdfEditorTool() {
             <ArrowLeft size={16} strokeWidth={2} />
           </Link>
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-tr from-red-600 to-rose-500 shadow-md"
-            >
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-tr from-red-600 via-rose-500 to-indigo-600 shadow-md">
               <FileText size={20} strokeWidth={2} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-brand-text">
-                  {isEnglish ? 'PDF Editor' : 'PDF Düzenleyici'}
+                  {isEnglish ? 'PDF Editor & In-Place Text Replacer' : 'PDF Düzenleyici & Metin Değiştirici'}
                 </h1>
                 <span className="text-[10.5px] font-bold text-white px-2.5 py-0.5 rounded-full bg-gradient-to-r from-red-500 via-pink-500 to-purple-600 shadow-sm">
-                  {isEnglish ? '100% Free' : 'Ücretsiz & Yerel'}
+                  {isEnglish ? 'Ultra HD 300 DPI' : 'Ultra HD 300 DPI'}
                 </span>
               </div>
               <p className="text-xs text-zinc-500">
                 {isEnglish
-                  ? 'Edit text seamlessly, drag signatures, redact confidential data directly in browser.'
-                  : 'Metinleri kusursuzca değiştirin, imzaları sürükleyin, verileri gizleyin.'}
+                  ? 'Replace text in place without losing quality, add signatures, redact data directly in browser.'
+                  : 'Metinleri görüntü kalitesi bozulmadan tam yerinde değiştirin, imzaları sürükleyin, verileri gizleyin.'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Global Action Bar */}
+        {/* Action Header Bar */}
         {pdfState && (
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             <button
               onClick={() => signatureInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-sm transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-sm transition-all"
             >
               <ImagePlus size={14} className="text-rose-500" />
               <span>{isEnglish ? 'Add Signature / Image' : 'İmza / Resim Ekle'}</span>
@@ -1222,7 +1276,7 @@ export default function PdfEditorTool() {
             <button
               onClick={handleDownloadCurrentPageImage}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 shadow-sm transition-all"
-              title={isEnglish ? 'Export page as PNG' : 'Sayfayı PNG olarak kaydet'}
+              title={isEnglish ? 'Export page as PNG' : 'Sayfayı PNG Kaydet'}
             >
               <Download size={14} />
               <span>PNG</span>
@@ -1246,211 +1300,295 @@ export default function PdfEditorTool() {
               )}
             </button>
 
-            <label className="cursor-pointer ml-1">
-              <span className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-xs flex items-center justify-center transition-colors">
-                <Upload size={14} />
-              </span>
-              <input
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleFileSelect(f);
-                }}
-              />
-            </label>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-xs flex items-center justify-center transition-colors"
+              title={isEnglish ? 'Open New PDF' : 'Yeni PDF Aç'}
+            >
+              <Upload size={15} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
         )}
       </div>
 
-      {/* Main Workspace */}
+      {/* Main Workspace Area */}
       {!pdfState ? (
-        // ── EMPTY STATE DROPZONE ──────────────────────────────────────────
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[500px] max-w-3xl mx-auto w-full">
+        // Upload Empty State
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[500px] border-2 border-dashed border-zinc-300 hover:border-red-500/60 rounded-3xl p-8 bg-zinc-50/50 hover:bg-red-50/10 transition-all">
+          <input
+            type="file"
+            id="pdf-upload-input"
+            accept="application/pdf"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <label
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const dropped = e.dataTransfer.files[0];
-              if (dropped) handleFileSelect(dropped);
-            }}
-            className="w-full flex flex-col items-center justify-center p-12 border-2 border-dashed border-red-300 hover:border-red-500 bg-white/80 hover:bg-red-50/30 rounded-3xl cursor-pointer shadow-xl transition-all group"
+            htmlFor="pdf-upload-input"
+            className="flex flex-col items-center justify-center cursor-pointer text-center max-w-md w-full"
           >
-            <div className="w-20 h-20 rounded-3xl bg-red-50 text-red-600 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:rotate-[-4deg] transition-all shadow-md">
-              <FileText size={40} strokeWidth={1.8} />
+            <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 mb-5 shadow-sm">
+              <FileText size={38} strokeWidth={1.75} />
             </div>
-
-            <h3 className="text-xl font-bold text-brand-text mb-2 text-center">
-              {isEnglish ? 'Choose a PDF file or drop it here' : 'PDF dosyanızı seçin veya buraya sürükleyin'}
-            </h3>
-            <p className="text-sm text-zinc-500 mb-6 text-center max-w-md">
+            <h2 className="text-xl font-bold text-zinc-800 mb-2">
+              {isEnglish ? 'Choose a PDF file to Edit' : 'Düzenlemek için bir PDF seçin'}
+            </h2>
+            <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
               {isEnglish
-                ? 'Select & replace text, drag signatures, adjust styling. 100% private in your browser.'
-                : 'Metinleri değiştirin, imzaları sürükleyin, yazı tipini ve boyutunu kolayca ayarlayın.'}
+                ? 'Modify text directly in-place without distortion, add electronic signatures, erase or redact content. 100% private, runs offline in your browser.'
+                : 'Metinleri bozulmadan doğrudan yerinde değiştirin, e-imza ekleyin, silin veya sansürleyin. %100 gizli, dosyalarınız sunucuya gitmez.'}
             </p>
-
-            <span className="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 shadow-md group-hover:shadow-lg transition-all">
-              {loading ? (isEnglish ? 'Loading PDF...' : 'PDF Yükleniyor...') : (isEnglish ? 'Select PDF' : 'PDF Dosyası Seç')}
+            <span className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-indigo-600 text-white font-bold text-xs sm:text-sm shadow-md hover:brightness-105 transition-all">
+              {loading ? (isEnglish ? 'Reading PDF...' : 'PDF Okunuyor...') : (isEnglish ? 'Browse File' : 'Dosya Seçin')}
             </span>
-
-            <input
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFileSelect(f);
-              }}
-            />
           </label>
-
-          {/* Feature Badges */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 w-full text-center">
-            {[
-              { icon: <Edit3 size={16} className="text-blue-600" />, label: isEnglish ? 'Select & Replace Text' : 'Metin Seç & Değiştir' },
-              { icon: <Type size={16} className="text-purple-600" />, label: isEnglish ? 'Font & Size Styling' : 'Yazı Tipi & Boyutu' },
-              { icon: <ImagePlus size={16} className="text-rose-600" />, label: isEnglish ? 'Signatures & Stamps' : 'İmza & Resim Ekle' },
-              { icon: <ShieldAlert size={16} className="text-zinc-800" />, label: isEnglish ? 'Redact / Censor' : 'Sansürle / Karart' },
-            ].map((f, i) => (
-              <div key={i} className="flex items-center justify-center gap-2 p-3 bg-white rounded-2xl border border-zinc-100 shadow-sm text-xs font-semibold text-zinc-700">
-                {f.icon}
-                <span>{f.label}</span>
-              </div>
-            ))}
-          </div>
         </div>
       ) : (
-        // ── FULL PDF EDITOR INTERFACE ────────────────────────────────────
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 items-start">
-          {/* LEFT: THUMBNAILS & PAGE MANAGER */}
-          <div className="w-full lg:w-60 bg-white rounded-3xl border border-zinc-200 p-4 shadow-sm flex flex-col max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+        // Active PDF Editor Workspace
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 items-stretch">
+          {/* Left Sidebar: Page Thumbnails & Page Management */}
+          <div className="w-full lg:w-48 bg-white rounded-3xl border border-zinc-200/80 p-3.5 flex flex-col gap-3 shadow-sm max-h-[750px] overflow-y-auto">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-zinc-700">
                 {isEnglish ? 'Pages' : 'Sayfalar'} ({activePages.length})
               </span>
-              <span className="text-[11px] font-medium text-zinc-500">
-                {currentPageIndex + 1} / {pdfState.numPages}
-              </span>
+              <button
+                onClick={handleDeletePage}
+                className="text-red-500 hover:text-red-700 text-xs p-1 rounded hover:bg-red-50"
+                title={isEnglish ? 'Delete Current Page' : 'Bu Sayfayı Sil'}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
 
-            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+            <div className="flex flex-row lg:flex-col gap-3 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
               {pdfState.pages.map((p, idx) => {
                 if (p.deleted) return null;
-                const isSelected = idx === currentPageIndex;
-                const pageAnns = annotations[idx] || [];
+                const isActive = idx === currentPageIndex;
+                const pageAnnsCount = (annotations[idx] || []).length;
 
                 return (
-                  <div
-                    key={idx}
+                  <button
+                    key={p.pageIndex}
                     onClick={() => {
                       setCurrentPageIndex(idx);
                       setSelectedAnnotationId(null);
-                      setSelectedTextPopup(null);
-                      setTextEditorCard(null);
+                      setInPlaceEditor(null);
+                      setNativeTextPopup(null);
                     }}
-                    className={`group relative p-2 rounded-2xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-red-500 bg-red-50/40 shadow-sm ring-2 ring-red-500/20'
-                        : 'border-zinc-100 hover:border-zinc-300 bg-zinc-50/50'
+                    className={`group relative flex flex-col items-center rounded-2xl border-2 p-2 transition-all text-left ${
+                      isActive
+                        ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-500/20'
+                        : 'border-zinc-200 hover:border-zinc-300 bg-zinc-50'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1.5 px-1">
-                      <span className="text-[11px] font-bold text-zinc-700">
-                        {isEnglish ? 'Page' : 'Sayfa'} {idx + 1}
-                      </span>
-                      {pageAnns.length > 0 && (
-                        <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded-full">
-                          {pageAnns.length}
-                        </span>
+                    <div className="w-full aspect-[1/1.4] bg-white rounded-lg border border-zinc-200 flex items-center justify-center text-zinc-400 font-bold text-xs relative overflow-hidden">
+                      <span>{p.pageNumber}</span>
+                      {pageAnnsCount > 0 && (
+                        <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-blue-600" />
                       )}
                     </div>
-
-                    <div className="w-full aspect-[1/1.4] bg-white rounded-xl border border-zinc-200 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
-                      <FileText size={28} className="text-zinc-300" />
-                      <span className="text-[10px] font-semibold text-zinc-400 mt-1">
-                        {p.originalWidth.toFixed(0)} × {p.originalHeight.toFixed(0)}
-                      </span>
-                      {p.rotation !== 0 && (
-                        <span className="absolute top-1 right-1 text-[9px] font-bold text-white bg-zinc-700 px-1 rounded">
-                          {p.rotation}°
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Quick page actions */}
-                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-zinc-200/60">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentPageIndex(idx);
-                          handleRotatePage(true);
-                        }}
-                        title={isEnglish ? 'Rotate 90° Clockwise' : '90° Saat Yönünde Döndür'}
-                        className="p-1 text-zinc-500 hover:text-brand-text hover:bg-zinc-200 rounded-lg transition-colors"
-                      >
-                        <RotateCw size={13} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeletePage(idx);
-                        }}
-                        title={isEnglish ? 'Delete this page' : 'Bu sayfayı sil'}
-                        className="p-1 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
+                    <span className="text-[11px] font-semibold text-zinc-600 mt-1.5">
+                      {isEnglish ? 'Page' : 'Sayfa'} {p.pageNumber}
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* CENTER: MAIN WORK AREA */}
-          <div className="flex-1 w-full flex flex-col gap-3">
-            {/* TOP TOOLBAR */}
-            <div className="bg-white rounded-3xl border border-zinc-200 p-3 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-              {/* Tool Selector */}
+          {/* Center Workspace */}
+          <div className="flex-1 flex flex-col gap-3">
+            {/* MAIN TOOLBAR */}
+            <div className="bg-white rounded-2xl border border-zinc-200/90 p-2 flex items-center justify-between gap-2 shadow-sm flex-wrap">
+              {/* Tool Selector Buttons */}
               <div className="flex items-center gap-1 flex-wrap">
-                {[
-                  { id: 'select', icon: <MousePointer size={15} />, label: isEnglish ? 'Select / Move' : 'Seç & Taşı' },
-                  { id: 'text', icon: <Type size={15} />, label: isEnglish ? 'Add Text' : 'Metin Ekle' },
-                  { id: 'pen', icon: <Pen size={15} />, label: isEnglish ? 'Draw Pen' : 'Kalem' },
-                  { id: 'highlighter', icon: <Highlighter size={15} />, label: isEnglish ? 'Highlight' : 'Vurgula' },
-                  { id: 'redact', icon: <ShieldAlert size={15} />, label: isEnglish ? 'Redact' : 'Sansür' },
-                  { id: 'rect', icon: <Square size={15} />, label: isEnglish ? 'Rectangle' : 'Kutu' },
-                  { id: 'circle', icon: <Circle size={15} />, label: isEnglish ? 'Circle' : 'Daire' },
-                  { id: 'arrow', icon: <ArrowUpRight size={15} />, label: isEnglish ? 'Arrow' : 'Ok' },
-                ].map((tool) => (
-                  <button
-                    key={tool.id}
-                    onClick={() => {
-                      setActiveTool(tool.id as ToolType);
-                      if (tool.id !== 'select') setSelectedAnnotationId(null);
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                      activeTool === tool.id
-                        ? 'bg-zinc-900 text-white shadow-sm scale-105'
-                        : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-                    }`}
-                  >
-                    {tool.icon}
-                    <span>{tool.label}</span>
-                  </button>
-                ))}
+                {/* 1. Select / Move */}
+                <button
+                  onClick={() => {
+                    setActiveTool('select');
+                    setInPlaceEditor(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activeTool === 'select'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Select & Move' : 'Seç & Taşı'}
+                >
+                  <MousePointer size={14} />
+                  <span>{isEnglish ? 'Select' : 'Seç / Taşı'}</span>
+                </button>
+
+                {/* 2. In-Place Text Precision Replacer */}
+                <button
+                  onClick={() => {
+                    setActiveTool('replace');
+                    setSelectedAnnotationId(null);
+                    setInPlaceEditor(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activeTool === 'replace'
+                      ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/40'
+                      : 'text-blue-700 bg-blue-50/70 hover:bg-blue-100'
+                  }`}
+                  title={isEnglish ? 'Precision Text Replacement' : 'Hassas Metin Değiştir'}
+                >
+                  <Edit3 size={14} />
+                  <span>{isEnglish ? 'Replace Text' : 'Metin Değiştir / Düzelt'}</span>
+                </button>
+
+                {/* 3. Add New Text */}
+                <button
+                  onClick={() => {
+                    setActiveTool('text');
+                    setSelectedAnnotationId(null);
+                    setInPlaceEditor(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activeTool === 'text'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Add New Text' : 'Yeni Metin Ekle'}
+                >
+                  <Type size={14} />
+                  <span>{isEnglish ? 'Add Text' : 'Metin Ekle'}</span>
+                </button>
+
+                <div className="h-5 w-px bg-zinc-200 mx-1 hidden sm:block" />
+
+                {/* 4. Whiteout / Eraser */}
+                <button
+                  onClick={() => {
+                    setActiveTool('whiteout');
+                    setSelectedAnnotationId(null);
+                    setInPlaceEditor(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'whiteout'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Whiteout / Erase original text' : 'Beyazlatıcı / Orijinal Yazıyı Kapat'}
+                >
+                  <Eraser size={14} />
+                  <span className="hidden sm:inline">{isEnglish ? 'Whiteout' : 'Beyazlat / Sil'}</span>
+                </button>
+
+                {/* 5. Pen */}
+                <button
+                  onClick={() => {
+                    setActiveTool('pen');
+                    setSelectedAnnotationId(null);
+                    setInPlaceEditor(null);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'pen'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Pen' : 'Kalem'}
+                >
+                  <Pen size={14} />
+                </button>
+
+                {/* 6. Highlighter */}
+                <button
+                  onClick={() => {
+                    setActiveTool('highlighter');
+                    setSelectedAnnotationId(null);
+                    setInPlaceEditor(null);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'highlighter'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Highlighter' : 'Vurgulayıcı'}
+                >
+                  <Highlighter size={14} className="text-amber-500" />
+                </button>
+
+                {/* 7. Redact */}
+                <button
+                  onClick={() => {
+                    setActiveTool('redact');
+                    setSelectedAnnotationId(null);
+                    setInPlaceEditor(null);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'redact'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Blackout / Redact' : 'Sansürle / Gizle'}
+                >
+                  <ShieldAlert size={14} className="text-zinc-900" />
+                </button>
+
+                {/* 8. Shapes */}
+                <button
+                  onClick={() => {
+                    setActiveTool('rect');
+                    setSelectedAnnotationId(null);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'rect'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Rectangle' : 'Kutu'}
+                >
+                  <Square size={14} />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTool('circle');
+                    setSelectedAnnotationId(null);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'circle'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Circle' : 'Daire'}
+                >
+                  <Circle size={14} />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTool('arrow');
+                    setSelectedAnnotationId(null);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-semibold transition-all ${
+                    activeTool === 'arrow'
+                      ? 'bg-zinc-900 text-white shadow-sm'
+                      : 'text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                  title={isEnglish ? 'Arrow' : 'Ok'}
+                >
+                  <ArrowUpRight size={14} />
+                </button>
               </div>
 
-              {/* Undo / Redo / Zoom */}
-              <div className="flex items-center gap-1.5 border-t sm:border-t-0 sm:border-l border-zinc-200 pt-2 sm:pt-0 sm:pl-3 w-full sm:w-auto justify-end">
+              {/* Undo / Redo & Zoom Controls */}
+              <div className="flex items-center gap-1">
                 <button
                   onClick={undo}
                   disabled={historyIdx <= 0}
                   className="p-1.5 rounded-xl text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
                   title={isEnglish ? 'Undo' : 'Geri Al'}
                 >
-                  <Undo2 size={16} />
+                  <Undo2 size={15} />
                 </button>
                 <button
                   onClick={redo}
@@ -1458,7 +1596,7 @@ export default function PdfEditorTool() {
                   className="p-1.5 rounded-xl text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
                   title={isEnglish ? 'Redo' : 'İleri Al'}
                 >
-                  <Redo2 size={16} />
+                  <Redo2 size={15} />
                 </button>
 
                 <div className="h-4 w-px bg-zinc-200 mx-1" />
@@ -1468,9 +1606,9 @@ export default function PdfEditorTool() {
                   className="p-1.5 rounded-xl text-zinc-600 hover:bg-zinc-100 transition-colors"
                   title={isEnglish ? 'Zoom Out' : 'Uzaklaştır'}
                 >
-                  <ZoomOut size={16} />
+                  <ZoomOut size={15} />
                 </button>
-                <span className="text-xs font-bold text-zinc-600 min-w-[42px] text-center">
+                <span className="text-xs font-bold text-zinc-600 min-w-[38px] text-center">
                   {(zoomScale * 100).toFixed(0)}%
                 </span>
                 <button
@@ -1478,210 +1616,43 @@ export default function PdfEditorTool() {
                   className="p-1.5 rounded-xl text-zinc-600 hover:bg-zinc-100 transition-colors"
                   title={isEnglish ? 'Zoom In' : 'Yakınlaştır'}
                 >
-                  <ZoomIn size={16} />
+                  <ZoomIn size={15} />
                 </button>
               </div>
             </div>
 
-            {/* SUB-TOOLBAR: Color, Font, Size, Stroke Controls (Live bound to active selection) */}
-            <div className="bg-white/95 backdrop-blur rounded-2xl border border-zinc-200 px-4 py-2.5 flex items-center justify-between gap-4 flex-wrap text-xs shadow-sm">
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Color Palette */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-zinc-500 font-medium mr-1">
-                    {isEnglish ? 'Color:' : 'Renk:'}
+            {/* Quick Context Tip Banner when Tool is Active */}
+            {activeTool === 'replace' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-2 flex items-center justify-between text-xs text-blue-900 font-medium animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                  <span>
+                    {isEnglish
+                      ? '🎯 Drag a box over the text or number on the PDF to replace it in-place with zero quality loss.'
+                      : '🎯 PDF üzerindeki değiştirmek istediğiniz kelime veya sayının üzerini kutu içine alın, anında kusursuzca değişsin.'}
                   </span>
-                  {(activeTool === 'highlighter' ? HIGHLIGHTER_COLORS : COLOR_PALETTE).map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => {
-                        setColor(c);
-                        updateSelectedItemProperty({ color: c });
-                      }}
-                      className={`w-6 h-6 rounded-full border border-black/10 flex items-center justify-center transition-transform ${
-                        color === c ? 'scale-125 shadow-md ring-2 ring-zinc-400' : 'hover:scale-110'
-                      }`}
-                      style={{ backgroundColor: c }}
-                    >
-                      {color === c && (
-                        <Check size={12} className={c === '#ffffff' || c === '#facc15' ? 'text-black' : 'text-white'} />
-                      )}
-                    </button>
-                  ))}
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => {
-                      setColor(e.target.value);
-                      updateSelectedItemProperty({ color: e.target.value });
-                    }}
-                    className="w-6 h-6 rounded-full cursor-pointer border-0 bg-transparent p-0"
-                    title={isEnglish ? 'Custom Color' : 'Özel Renk'}
-                  />
                 </div>
-
-                {/* Text Formatting Controls */}
-                {isTextContextActive && (
-                  <div className="flex items-center gap-2 border-l border-zinc-200 pl-3 flex-wrap">
-                    <select
-                      value={fontFamily}
-                      onChange={(e) => {
-                        setFontFamily(e.target.value);
-                        updateSelectedItemProperty({ fontFamily: e.target.value });
-                      }}
-                      className="px-2 py-1 border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-700 bg-white"
-                    >
-                      {FONT_FAMILIES.map((f) => (
-                        <option key={f.label} value={f.value}>
-                          {f.label}
-                        </option>
-                      ))}
-                    </select>
-
-                    <span className="text-zinc-500 font-medium ml-1">
-                      {isEnglish ? 'Size:' : 'Boyut:'}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const newSize = Math.max(10, fontSize - 2);
-                        setFontSize(newSize);
-                        updateSelectedItemProperty({ fontSize: newSize });
-                      }}
-                      className="p-1 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold"
-                      title={isEnglish ? 'Decrease Font Size' : 'Yazı Boyutunu Küçült'}
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <span className="font-bold text-zinc-800 min-w-[28px] text-center">
-                      {fontSize}px
-                    </span>
-                    <button
-                      onClick={() => {
-                        const newSize = Math.min(80, fontSize + 2);
-                        setFontSize(newSize);
-                        updateSelectedItemProperty({ fontSize: newSize });
-                      }}
-                      className="p-1 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold"
-                      title={isEnglish ? 'Increase Font Size' : 'Yazı Boyutunu Büyüt'}
-                    >
-                      <Plus size={13} />
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        const newBold = !isBold;
-                        setIsBold(newBold);
-                        updateSelectedItemProperty({ isBold: newBold });
-                      }}
-                      className={`px-2 py-0.5 rounded-lg font-black ${isBold ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-700'}`}
-                      title="Bold"
-                    >
-                      B
-                    </button>
-                    <button
-                      onClick={() => {
-                        const newItalic = !isItalic;
-                        setIsItalic(newItalic);
-                        updateSelectedItemProperty({ isItalic: newItalic });
-                      }}
-                      className={`px-2 py-0.5 rounded-lg italic font-serif ${isItalic ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-700'}`}
-                      title="Italic"
-                    >
-                      I
-                    </button>
-                  </div>
-                )}
-
-                {/* Stroke width */}
-                {(activeTool === 'pen' || activeTool === 'rect' || activeTool === 'circle' || activeTool === 'arrow') && (
-                  <div className="flex items-center gap-2 border-l border-zinc-200 pl-3">
-                    <span className="text-zinc-500 font-medium">
-                      {isEnglish ? 'Thickness:' : 'Kalınlık:'}
-                    </span>
-                    {[2, 4, 6, 10].map((w) => (
-                      <button
-                        key={w}
-                        onClick={() => {
-                          setStrokeWidth(w);
-                          updateSelectedItemProperty({ strokeWidth: w });
-                        }}
-                        className={`px-2 py-0.5 rounded-lg font-bold ${
-                          strokeWidth === w ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-700'
-                        }`}
-                      >
-                        {w}px
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Fill control */}
-                {(activeTool === 'rect' || activeTool === 'circle' || (selectedItem && ['rect', 'circle'].includes(selectedItem.type))) && (
-                  <div className="flex items-center gap-2 border-l border-zinc-200 pl-3">
-                    <span className="text-zinc-500 font-medium">
-                      {isEnglish ? 'Fill:' : 'Dolgu:'}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const nextFill = textFill === 'transparent' ? color + '40' : 'transparent';
-                        setTextFill(nextFill);
-                        updateSelectedItemProperty({ fillColor: nextFill });
-                      }}
-                      className={`px-2.5 py-0.5 rounded-lg font-semibold ${
-                        textFill !== 'transparent' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-700'
-                      }`}
-                    >
-                      {textFill !== 'transparent' ? (isEnglish ? 'Filled' : 'Dolu') : (isEnglish ? 'Transparent' : 'Şeffaf')}
-                    </button>
-                  </div>
-                )}
+                <button
+                  onClick={() => setActiveTool('select')}
+                  className="text-blue-700 hover:text-blue-900 font-bold"
+                >
+                  {isEnglish ? 'Cancel' : 'Vazgeç'}
+                </button>
               </div>
+            )}
 
-              {/* Action for selected item */}
-              <div className="flex items-center gap-2">
-                {selectedItem && (
-                  <>
-                    <button
-                      onClick={() => setSelectedAnnotationId(null)}
-                      className="flex items-center gap-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-xl font-bold transition-colors"
-                      title={isEnglish ? 'Done' : 'Bitti'}
-                    >
-                      <Check size={13} />
-                      <span>{isEnglish ? 'Done' : 'Tamam'}</span>
-                    </button>
-                    {selectedItem.type === 'text' && (
-                      <button
-                        onClick={() => handleEditTextItem(selectedItem)}
-                        className="flex items-center gap-1 text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-xl font-semibold transition-colors"
-                        title={isEnglish ? 'Edit Text' : 'Metni Düzenle'}
-                      >
-                        <Edit3 size={12} />
-                        <span>{isEnglish ? 'Edit' : 'Düzenle'}</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={handleDuplicateSelected}
-                      className="flex items-center gap-1 text-zinc-700 bg-zinc-100 hover:bg-zinc-200 px-2.5 py-1 rounded-xl font-semibold transition-colors"
-                      title={isEnglish ? 'Duplicate' : 'Çoğalt'}
-                    >
-                      <Copy size={12} />
-                    </button>
-                    <button
-                      onClick={handleDeleteSelected}
-                      className="flex items-center gap-1 text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-xl font-semibold transition-colors"
-                      title={isEnglish ? 'Delete Selected' : 'Seçileni Sil'}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* STAGE CONTAINER */}
+            {/* STAGE WORKSPACE CANVAS */}
             <div
               ref={containerRef}
-              className="flex-1 bg-zinc-100/90 rounded-3xl border border-zinc-200/80 p-6 flex flex-col items-center justify-start overflow-auto min-h-[620px] relative shadow-inner"
+              onClick={(e) => {
+                // If clicked outside canvas/objects, clear selection
+                if (e.target === containerRef.current) {
+                  setSelectedAnnotationId(null);
+                  setInPlaceEditor(null);
+                  setNativeTextPopup(null);
+                }
+              }}
+              className="flex-1 bg-zinc-100/90 rounded-3xl border border-zinc-200/80 p-6 flex flex-col items-center justify-start overflow-auto min-h-[640px] relative shadow-inner"
             >
               <div
                 className="relative shadow-2xl rounded-sm overflow-hidden bg-white border border-zinc-300"
@@ -1696,6 +1667,7 @@ export default function PdfEditorTool() {
                 {/* 2. PDF.js Native Text Selection Layer */}
                 <div
                   ref={textLayerContainerRef}
+                  onMouseUp={checkNativeTextSelection}
                   className={`textLayer ${activeTool === 'select' ? 'pointer-events-auto' : 'pointer-events-none'}`}
                   style={{
                     position: 'absolute',
@@ -1706,7 +1678,7 @@ export default function PdfEditorTool() {
                   }}
                 />
 
-                {/* 3. Freehand Drawing & Highlighter Canvas Overlay */}
+                {/* 3. Freehand Drawing & Tool Overlay Canvas */}
                 <canvas
                   ref={overlayCanvasRef}
                   onMouseDown={handleCanvasMouseDown}
@@ -1715,20 +1687,22 @@ export default function PdfEditorTool() {
                   className={`absolute inset-0 z-10 ${
                     activeTool === 'select'
                       ? 'pointer-events-none'
+                      : activeTool === 'replace'
+                      ? 'cursor-crosshair pointer-events-auto'
                       : activeTool === 'text'
                       ? 'cursor-text pointer-events-auto'
                       : 'cursor-crosshair pointer-events-auto'
                   }`}
                 />
 
-                {/* 4. Interactive Object Layer */}
+                {/* 4. Interactive Object Layer (High-Resolution Visual Rendering) */}
                 <div className="absolute inset-0 z-20 pointer-events-none">
                   {pageObjectAnnotations.map((item) => {
                     const isSelected = item.id === selectedAnnotationId;
                     const scaledX = item.x * currentScaleRatio;
                     const scaledY = item.y * currentScaleRatio;
-                    const scaledW = (item.width || 120) * currentScaleRatio;
-                    const scaledH = (item.height || 40) * currentScaleRatio;
+                    const scaledW = (item.width || 100) * currentScaleRatio;
+                    const scaledH = (item.height || 30) * currentScaleRatio;
 
                     return (
                       <div
@@ -1740,7 +1714,7 @@ export default function PdfEditorTool() {
                         }}
                         className={`absolute pointer-events-auto group transition-shadow ${
                           isSelected
-                            ? 'ring-2 ring-blue-500 shadow-xl cursor-move bg-white/10'
+                            ? 'ring-2 ring-blue-500 shadow-xl cursor-move bg-white/5'
                             : 'cursor-pointer hover:ring-1 hover:ring-blue-300'
                         }`}
                         style={{
@@ -1750,7 +1724,7 @@ export default function PdfEditorTool() {
                           height: `${scaledH}px`,
                         }}
                       >
-                        {/* Render Content */}
+                        {/* Text Object Rendering */}
                         {item.type === 'text' && (
                           <div
                             className="w-full h-full flex items-start justify-start relative overflow-hidden"
@@ -1766,6 +1740,7 @@ export default function PdfEditorTool() {
                                 color: item.color || '#000000',
                                 fontWeight: item.isBold ? 'bold' : 'normal',
                                 fontStyle: item.isItalic ? 'italic' : 'normal',
+                                textAlign: item.align || 'left',
                               }}
                             >
                               {item.text || ''}
@@ -1773,6 +1748,7 @@ export default function PdfEditorTool() {
                           </div>
                         )}
 
+                        {/* Image / Signature Rendering */}
                         {item.type === 'image' && item.imageDataUrl && (
                           <img
                             src={item.imageDataUrl}
@@ -1782,6 +1758,7 @@ export default function PdfEditorTool() {
                           />
                         )}
 
+                        {/* Whiteout / Redact Block Rendering */}
                         {item.type === 'redact' && (
                           <div
                             className="w-full h-full rounded-sm"
@@ -1789,6 +1766,7 @@ export default function PdfEditorTool() {
                           />
                         )}
 
+                        {/* Shapes Rendering */}
                         {item.type === 'rect' && (
                           <div
                             className="w-full h-full"
@@ -1809,16 +1787,16 @@ export default function PdfEditorTool() {
                           />
                         )}
 
-                        {/* Floating Action Menu on Selected Object */}
+                        {/* Floating Action Menu over Selected Object */}
                         {isSelected && (
                           <div
-                            className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900/95 backdrop-blur text-white rounded-xl px-2.5 py-1.5 flex items-center gap-2 shadow-2xl z-40 text-xs whitespace-nowrap"
+                            className="absolute -top-10 left-1/2 -translate-x-1/2 bg-zinc-900 text-white rounded-xl px-2.5 py-1 flex items-center gap-2 shadow-2xl z-40 text-xs whitespace-nowrap"
                             onMouseDown={(e) => e.stopPropagation()}
                           >
                             <button
                               onClick={() => setSelectedAnnotationId(null)}
                               className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-bold"
-                              title={isEnglish ? 'Done / Deselect' : 'Bitti / Seçimi Kaldır'}
+                              title={isEnglish ? 'Done / Finish Editing' : '✓ Tamam / Onayla'}
                             >
                               <Check size={13} />
                               <span>{isEnglish ? 'Done' : 'Tamam'}</span>
@@ -1830,7 +1808,7 @@ export default function PdfEditorTool() {
                                 <button
                                   onClick={() => handleEditTextItem(item)}
                                   className="flex items-center gap-1 hover:text-blue-400 font-medium"
-                                  title={isEnglish ? 'Edit Text' : 'Düzenle'}
+                                  title={isEnglish ? 'Edit' : 'Düzenle'}
                                 >
                                   <Edit3 size={12} />
                                   <span>{isEnglish ? 'Edit' : 'Düzenle'}</span>
@@ -1883,31 +1861,31 @@ export default function PdfEditorTool() {
                 </div>
 
                 {/* 5. Floating Popup for Native PDF Selected Text */}
-                {selectedTextPopup && activeTool === 'select' && (
+                {nativeTextPopup && activeTool === 'select' && (
                   <div
-                    className="fixed z-50 bg-zinc-900 text-white rounded-2xl p-1.5 shadow-2xl flex items-center gap-1.5 border border-zinc-700 animate-fadeIn"
+                    className="fixed z-50 bg-zinc-950/95 backdrop-blur text-white rounded-2xl p-1.5 shadow-2xl flex items-center gap-1.5 border border-zinc-700 animate-fadeIn"
                     style={{
-                      left: `${selectedTextPopup.screenX}px`,
-                      top: `${selectedTextPopup.screenY - 35}px`,
+                      left: `${nativeTextPopup.screenX}px`,
+                      top: `${nativeTextPopup.screenY - 38}px`,
                       transform: 'translateX(-50%)',
                     }}
                   >
                     <button
-                      onClick={handleOpenReplaceCard}
+                      onClick={handleLaunchInPlaceFromNative}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition-all"
                     >
                       <Edit3 size={13} />
                       <span>{isEnglish ? 'Replace Text' : 'Metni Değiştir'}</span>
                     </button>
                     <button
-                      onClick={handleRedactSelectedText}
+                      onClick={handleRedactNativeText}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs transition-all"
                     >
                       <ShieldAlert size={13} />
                       <span>{isEnglish ? 'Censor' : 'Sansürle'}</span>
                     </button>
                     <button
-                      onClick={() => setSelectedTextPopup(null)}
+                      onClick={() => setNativeTextPopup(null)}
                       className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white"
                       title="Kapat"
                     >
@@ -1917,14 +1895,14 @@ export default function PdfEditorTool() {
                 )}
               </div>
 
-              {/* Bottom Floating Page Navigator */}
+              {/* Bottom Sticky Page Navigator */}
               <div className="sticky bottom-4 mt-6 bg-white/95 backdrop-blur-md px-4 py-2 rounded-full border border-zinc-200 shadow-xl flex items-center gap-3 z-30">
                 <button
                   onClick={() => {
                     setCurrentPageIndex((p) => Math.max(0, p - 1));
                     setSelectedAnnotationId(null);
-                    setSelectedTextPopup(null);
-                    setTextEditorCard(null);
+                    setNativeTextPopup(null);
+                    setInPlaceEditor(null);
                   }}
                   disabled={currentPageIndex <= 0}
                   className="p-1 rounded-full text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
@@ -1938,8 +1916,8 @@ export default function PdfEditorTool() {
                   onClick={() => {
                     setCurrentPageIndex((p) => Math.min(pdfState.numPages - 1, p + 1));
                     setSelectedAnnotationId(null);
-                    setSelectedTextPopup(null);
-                    setTextEditorCard(null);
+                    setNativeTextPopup(null);
+                    setInPlaceEditor(null);
                   }}
                   disabled={currentPageIndex >= pdfState.numPages - 1}
                   className="p-1 rounded-full text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
@@ -1960,60 +1938,78 @@ export default function PdfEditorTool() {
         </div>
       )}
 
-      {/* ── DEDICATED TEXT EDITOR MODAL / CARD (For 1-Click Replace or Add Text) ── */}
-      {textEditorCard?.isOpen && (
+      {/* ── IN-PLACE PRECISION TEXT REPLACEMENT POPOVER / MODAL ── */}
+      {inPlaceEditor?.isOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-zinc-100 space-y-4 animate-fadeIn">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl border border-zinc-200 space-y-4 animate-fadeIn">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
                   <Edit3 size={16} />
                 </div>
-                <h3 className="text-base font-bold text-zinc-900">
-                  {textEditorCard.isNew
-                    ? (isEnglish ? 'Write / Replace Text' : 'Metin Yaz / Değiştir')
-                    : (isEnglish ? 'Edit Text' : 'Metni Düzenle')}
-                </h3>
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900">
+                    {inPlaceEditor.isNew
+                      ? (isEnglish ? 'In-Place Text Precision Replacer' : 'Yerinde Hassas Metin Değiştirici')
+                      : (isEnglish ? 'Edit Text Content' : 'Metni Düzenle')}
+                  </h3>
+                  <span className="text-[10px] text-zinc-500 font-medium">
+                    {isEnglish ? '300 DPI Crisp Vector Output' : '300 DPI Net Baskı & Görüntü Kalitesi'}
+                  </span>
+                </div>
               </div>
               <button
-                onClick={() => setTextEditorCard(null)}
+                onClick={() => setInPlaceEditor(null)}
                 className="p-1 rounded-full text-zinc-400 hover:text-zinc-700"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Input Field */}
+            {/* Input Box */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-600">
-                {isEnglish ? 'Text Content:' : 'Yeni Metin / Sayı:'}
+              <label className="text-xs font-bold text-zinc-700 flex items-center justify-between">
+                <span>{isEnglish ? 'New Text / Numbers:' : 'Yeni Metin / Sayı:'}</span>
+                <span className="text-[10px] text-zinc-400 font-normal">
+                  {isEnglish ? 'Press Enter to Apply' : 'Enter: Uygula | Shift+Enter: Alt Satır'}
+                </span>
               </label>
               <textarea
                 autoFocus
-                rows={3}
-                value={textEditorCard.text}
-                onChange={(e) => setTextEditorCard({ ...textEditorCard, text: e.target.value })}
-                placeholder={isEnglish ? 'Type your replacement text here...' : 'Yeni metni buraya yazın...'}
-                className="w-full px-3.5 py-2.5 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium resize-none"
+                rows={2}
+                value={inPlaceEditor.text}
+                onChange={(e) => setInPlaceEditor({ ...inPlaceEditor, text: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleApplyInPlaceText();
+                  } else if (e.key === 'Escape') {
+                    setInPlaceEditor(null);
+                  }
+                }}
+                placeholder={isEnglish ? 'Type replacement text here...' : 'Yeni metni veya tutarı buraya yazın...'}
+                className="w-full px-3.5 py-2.5 border-2 border-blue-500/80 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/20 font-medium resize-none shadow-inner"
                 style={{
-                  fontFamily: textEditorCard.fontFamily,
-                  color: textEditorCard.color,
-                  fontWeight: textEditorCard.isBold ? 'bold' : 'normal',
-                  fontStyle: textEditorCard.isItalic ? 'italic' : 'normal',
+                  fontFamily: inPlaceEditor.fontFamily,
+                  color: inPlaceEditor.color,
+                  fontWeight: inPlaceEditor.isBold ? 'bold' : 'normal',
+                  fontStyle: inPlaceEditor.isItalic ? 'italic' : 'normal',
+                  textAlign: inPlaceEditor.align,
                 }}
               />
             </div>
 
-            {/* Font & Size Controls */}
+            {/* Typography Controls: Font & Size */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-zinc-600 block mb-1">
                   {isEnglish ? 'Font Family:' : 'Yazı Tipi:'}
                 </label>
                 <select
-                  value={textEditorCard.fontFamily}
-                  onChange={(e) => setTextEditorCard({ ...textEditorCard, fontFamily: e.target.value })}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold text-zinc-700 bg-white"
+                  value={inPlaceEditor.fontFamily}
+                  onChange={(e) => setInPlaceEditor({ ...inPlaceEditor, fontFamily: e.target.value })}
+                  className="w-full px-2.5 py-1.5 border border-zinc-200 rounded-xl text-xs font-semibold text-zinc-700 bg-white"
                 >
                   {FONT_FAMILIES.map((f) => (
                     <option key={f.label} value={f.value}>
@@ -2025,24 +2021,24 @@ export default function PdfEditorTool() {
 
               <div>
                 <label className="text-xs font-semibold text-zinc-600 block mb-1">
-                  {isEnglish ? 'Font Size:' : 'Yazı Boyutu:'}
+                  {isEnglish ? 'Font Size:' : 'Punto (Boyut):'}
                 </label>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setTextEditorCard({ ...textEditorCard, fontSize: Math.max(10, textEditorCard.fontSize - 2) })}
-                    className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
+                    onClick={() => setInPlaceEditor({ ...inPlaceEditor, fontSize: Math.max(8, inPlaceEditor.fontSize - 1) })}
+                    className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold"
                   >
                     <Minus size={13} />
                   </button>
                   <input
                     type="number"
-                    value={textEditorCard.fontSize}
-                    onChange={(e) => setTextEditorCard({ ...textEditorCard, fontSize: Number(e.target.value) || 16 })}
-                    className="w-16 px-2 py-1.5 border border-zinc-200 rounded-lg text-xs font-bold text-center"
+                    value={inPlaceEditor.fontSize}
+                    onChange={(e) => setInPlaceEditor({ ...inPlaceEditor, fontSize: Number(e.target.value) || 16 })}
+                    className="w-16 px-1.5 py-1 border border-zinc-200 rounded-lg text-xs font-bold text-center"
                   />
                   <button
-                    onClick={() => setTextEditorCard({ ...textEditorCard, fontSize: Math.min(80, textEditorCard.fontSize + 2) })}
-                    className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700"
+                    onClick={() => setInPlaceEditor({ ...inPlaceEditor, fontSize: Math.min(90, inPlaceEditor.fontSize + 1) })}
+                    className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold"
                   >
                     <Plus size={13} />
                   </button>
@@ -2050,62 +2046,106 @@ export default function PdfEditorTool() {
               </div>
             </div>
 
-            {/* Styling & Color */}
-            <div className="flex items-center justify-between border-t border-zinc-100 pt-3">
+            {/* Styling, Color & Background Mask */}
+            <div className="flex items-center justify-between border-t border-zinc-100 pt-3 gap-2 flex-wrap">
+              {/* Color */}
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-zinc-600 mr-1">
                   {isEnglish ? 'Color:' : 'Renk:'}
                 </span>
-                {COLOR_PALETTE.slice(0, 6).map((c) => (
+                {COLOR_PALETTE.slice(0, 5).map((c) => (
                   <button
                     key={c}
-                    onClick={() => setTextEditorCard({ ...textEditorCard, color: c })}
-                    className={`w-6 h-6 rounded-full border border-black/10 flex items-center justify-center ${
-                      textEditorCard.color === c ? 'scale-125 shadow-md ring-2 ring-blue-500' : ''
+                    onClick={() => setInPlaceEditor({ ...inPlaceEditor, color: c })}
+                    className={`w-5 h-5 rounded-full border border-black/10 flex items-center justify-center transition-transform ${
+                      inPlaceEditor.color === c ? 'scale-125 ring-2 ring-blue-500 shadow-md' : 'hover:scale-110'
                     }`}
                     style={{ backgroundColor: c }}
                   >
-                    {textEditorCard.color === c && (
-                      <Check size={11} className={c === '#ffffff' ? 'text-black' : 'text-white'} />
+                    {inPlaceEditor.color === c && (
+                      <Check size={10} className="text-white" />
                     )}
                   </button>
                 ))}
               </div>
 
+              {/* Bold / Italic / Align */}
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setTextEditorCard({ ...textEditorCard, isBold: !textEditorCard.isBold })}
-                  className={`px-3 py-1.5 rounded-xl font-black text-xs ${
-                    textEditorCard.isBold ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-700'
+                  onClick={() => setInPlaceEditor({ ...inPlaceEditor, isBold: !inPlaceEditor.isBold })}
+                  className={`px-2.5 py-1 rounded-lg font-black text-xs ${
+                    inPlaceEditor.isBold ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-700'
                   }`}
+                  title="Bold"
                 >
                   B
                 </button>
                 <button
-                  onClick={() => setTextEditorCard({ ...textEditorCard, isItalic: !textEditorCard.isItalic })}
-                  className={`px-3 py-1.5 rounded-xl italic font-serif text-xs ${
-                    textEditorCard.isItalic ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-700'
+                  onClick={() => setInPlaceEditor({ ...inPlaceEditor, isItalic: !inPlaceEditor.isItalic })}
+                  className={`px-2.5 py-1 rounded-lg italic font-serif text-xs ${
+                    inPlaceEditor.isItalic ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-700'
                   }`}
+                  title="Italic"
                 >
                   I
+                </button>
+                <button
+                  onClick={() => {
+                    const aligns: ('left' | 'center' | 'right')[] = ['left', 'center', 'right'];
+                    const nextAlign = aligns[(aligns.indexOf(inPlaceEditor.align) + 1) % 3];
+                    setInPlaceEditor({ ...inPlaceEditor, align: nextAlign });
+                  }}
+                  className="p-1 rounded-lg bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  title="Align"
+                >
+                  {inPlaceEditor.align === 'center' ? <AlignCenter size={14} /> : inPlaceEditor.align === 'right' ? <AlignRight size={14} /> : <AlignLeft size={14} />}
                 </button>
               </div>
             </div>
 
-            {/* Bottom Actions */}
+            {/* Background Masking Option (Whiteout under text) */}
+            <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-2.5 flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-zinc-800 block">
+                  {isEnglish ? 'Whiteout Mask' : 'Alt Metni Kapat (Whiteout)'}
+                </span>
+                <span className="text-[11px] text-zinc-500">
+                  {isEnglish ? 'Hides the old original text seamlessly.' : 'Eski yazının alttan görünmesini engeller.'}
+                </span>
+              </div>
+              <button
+                onClick={() =>
+                  setInPlaceEditor({
+                    ...inPlaceEditor,
+                    fillColor: inPlaceEditor.fillColor === '#ffffff' ? 'transparent' : '#ffffff',
+                  })
+                }
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                  inPlaceEditor.fillColor === '#ffffff'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-zinc-200 text-zinc-700'
+                }`}
+              >
+                {inPlaceEditor.fillColor === '#ffffff'
+                  ? (isEnglish ? 'Active' : 'Açık')
+                  : (isEnglish ? 'Off' : 'Kapalı')}
+              </button>
+            </div>
+
+            {/* Action Buttons */}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
               <button
-                onClick={() => setTextEditorCard(null)}
+                onClick={() => setInPlaceEditor(null)}
                 className="px-4 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl"
               >
                 {isEnglish ? 'Cancel' : 'İptal'}
               </button>
               <button
-                onClick={handleSaveTextCard}
-                className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all"
+                onClick={handleApplyInPlaceText}
+                className="flex items-center gap-1.5 px-6 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md hover:shadow-lg transition-all"
               >
                 <Check size={14} />
-                <span>{isEnglish ? 'Apply & Save' : '✓ Tamam / Uygula'}</span>
+                <span>{isEnglish ? '✓ Apply & Done' : '✓ Uygula & Tamamla'}</span>
               </button>
             </div>
           </div>
