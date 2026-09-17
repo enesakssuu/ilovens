@@ -6,7 +6,8 @@ import {
   ZoomIn, ZoomOut, Undo2, Redo2, Type, Pen, Highlighter,
   Square, Circle, ArrowUpRight, ShieldAlert, ImagePlus,
   Stamp, Check, ChevronLeft, ChevronRight, Upload,
-  RefreshCw, Copy, Move, MousePointer, Plus, Minus
+  RefreshCw, Copy, MousePointer, Plus, Minus,
+  Edit3
 } from 'lucide-react';
 import {
   loadPdfDocument,
@@ -92,6 +93,17 @@ export default function PdfEditorTool() {
   // Selection & Manipulation state
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  // Selected Native Text Popup (when selecting existing text in PDF to replace/censor)
+  const [selectedTextPopup, setSelectedTextPopup] = useState<{
+    text: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    screenX: number;
+    screenY: number;
+  } | null>(null);
 
   // Interaction: Dragging an object
   const [draggingState, setDraggingState] = useState<{
@@ -197,6 +209,7 @@ export default function PdfEditorTool() {
     setHistoryIdx(-1);
     setCurrentPageIndex(0);
     setSelectedAnnotationId(null);
+    setSelectedTextPopup(null);
 
     try {
       const { pdfDoc, state } = await loadPdfDocument(f);
@@ -423,6 +436,127 @@ export default function PdfEditorTool() {
       x: clientX * scaleFactor,
       y: clientY * scaleFactor,
     };
+  };
+
+  // Detect native text selection in the PDF
+  const checkNativeTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !baseCanvasRef.current || !pdfState) {
+      setSelectedTextPopup(null);
+      return;
+    }
+
+    const selectedStr = selection.toString().trim();
+    if (!selectedStr) {
+      setSelectedTextPopup(null);
+      return;
+    }
+
+    try {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const canvasRect = baseCanvasRef.current.getBoundingClientRect();
+      const pageInfo = pdfState.pages[currentPageIndex];
+      if (!pageInfo) return;
+
+      const scaleFactor = pageInfo.originalWidth / baseCanvasRef.current.width;
+      const unscaledX = (rect.left - canvasRect.left) * scaleFactor;
+      const unscaledY = (rect.top - canvasRect.top) * scaleFactor;
+      const unscaledW = rect.width * scaleFactor;
+      const unscaledH = rect.height * scaleFactor;
+
+      setSelectedTextPopup({
+        text: selectedStr,
+        x: Math.max(0, unscaledX),
+        y: Math.max(0, unscaledY),
+        width: Math.max(20, unscaledW),
+        height: Math.max(14, unscaledH),
+        screenX: rect.left + rect.width / 2,
+        screenY: rect.top - 8,
+      });
+    } catch {
+      setSelectedTextPopup(null);
+    }
+  };
+
+  // Replace Selected PDF Text with Whiteout + Editable Text
+  const handleReplaceSelectedText = () => {
+    if (!selectedTextPopup || !pdfState) return;
+
+    const whiteoutId = 'ann_whiteout_' + Date.now();
+    const whiteoutBox: AnnotationItem = {
+      id: whiteoutId,
+      type: 'redact',
+      pageIndex: currentPageIndex,
+      x: Math.max(0, selectedTextPopup.x - 2),
+      y: Math.max(0, selectedTextPopup.y - 2),
+      width: selectedTextPopup.width + 4,
+      height: selectedTextPopup.height + 4,
+      color: '#ffffff',
+      opacity: 1.0,
+    };
+
+    const newTextId = 'ann_text_' + (Date.now() + 1);
+    const newTextItem: AnnotationItem = {
+      id: newTextId,
+      type: 'text',
+      pageIndex: currentPageIndex,
+      x: selectedTextPopup.x,
+      y: selectedTextPopup.y,
+      width: Math.max(selectedTextPopup.width + 40, 160),
+      height: Math.max(selectedTextPopup.height + 10, 32),
+      text: selectedTextPopup.text,
+      fontSize: Math.max(12, Math.round(selectedTextPopup.height * 0.9)),
+      fontFamily,
+      color: '#000000',
+      isBold: false,
+      isItalic: false,
+      opacity: 1.0,
+    };
+
+    const updated = {
+      ...annotations,
+      [currentPageIndex]: [
+        ...(annotations[currentPageIndex] || []),
+        whiteoutBox,
+        newTextItem,
+      ],
+    };
+
+    setAnnotations(updated);
+    pushToHistory(updated);
+    setSelectedAnnotationId(newTextId);
+    setEditingTextId(newTextId);
+    setSelectedTextPopup(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  // Censor / Redact Selected PDF Text
+  const handleRedactSelectedText = () => {
+    if (!selectedTextPopup || !pdfState) return;
+
+    const redactId = 'ann_redact_' + Date.now();
+    const redactBox: AnnotationItem = {
+      id: redactId,
+      type: 'redact',
+      pageIndex: currentPageIndex,
+      x: Math.max(0, selectedTextPopup.x - 2),
+      y: Math.max(0, selectedTextPopup.y - 2),
+      width: selectedTextPopup.width + 4,
+      height: selectedTextPopup.height + 4,
+      color: '#000000',
+      opacity: 1.0,
+    };
+
+    const updated = {
+      ...annotations,
+      [currentPageIndex]: [...(annotations[currentPageIndex] || []), redactBox],
+    };
+
+    setAnnotations(updated);
+    pushToHistory(updated);
+    setSelectedTextPopup(null);
+    window.getSelection()?.removeAllRanges();
   };
 
   // Canvas Mouse Down: Triggers for drawing tools or creating text
@@ -706,6 +840,8 @@ export default function PdfEditorTool() {
   };
 
   const handleGlobalPointerUp = () => {
+    checkNativeTextSelection();
+
     if (draggingState || resizingState) {
       pushToHistory(annotations);
       setDraggingState(null);
@@ -973,8 +1109,8 @@ export default function PdfEditorTool() {
               </div>
               <p className="text-xs text-zinc-500">
                 {isEnglish
-                  ? 'Select & copy text, drag and resize signatures, adjust font sizes, redact data.'
-                  : 'Metinleri seçip kopyalayın, imzaları sürükleyin, yazı boyutunu ayarlayın, sansürleyin.'}
+                  ? 'Select & replace text, drag signatures, adjust styling, redact data with full privacy.'
+                  : 'Metinleri seçip değiştirin, imzaları sürükleyin, yazı boyutunu ve fontunu ayarlayın.'}
               </p>
             </div>
           </div>
@@ -1074,8 +1210,8 @@ export default function PdfEditorTool() {
             </h3>
             <p className="text-sm text-zinc-500 mb-6 text-center max-w-md">
               {isEnglish
-                ? 'Select & copy text, drag signatures, adjust text styling, redact data. 100% private in your browser.'
-                : 'Metinleri seçip kopyalayın, imzaları sürükleyin, yazı boyutunu ve fontunu ayarlayın, gizleyin.'}
+                ? 'Select & replace text, drag signatures, adjust text styling, redact data. 100% private in your browser.'
+                : 'Metinleri seçip üzerine yeni metin yazın, imzaları sürükleyin, yazı boyutunu ve fontunu ayarlayın.'}
             </p>
 
             <span className="px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 shadow-md group-hover:shadow-lg transition-all">
@@ -1096,9 +1232,9 @@ export default function PdfEditorTool() {
           {/* Feature Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 w-full text-center">
             {[
-              { icon: <MousePointer size={16} className="text-blue-600" />, label: isEnglish ? 'Select & Copy Text' : 'Metin Seç & Kopyala' },
+              { icon: <Edit3 size={16} className="text-blue-600" />, label: isEnglish ? 'Select & Edit Text' : 'Metin Seç & Değiştir' },
               { icon: <Type size={16} className="text-purple-600" />, label: isEnglish ? 'Adjust Font & Size' : 'Yazı Tipi & Boyutu' },
-              { icon: <Move size={16} className="text-rose-600" />, label: isEnglish ? 'Drag & Move Signature' : 'İmzayı Sürükle / Boyutlandır' },
+              { icon: <ImagePlus size={16} className="text-rose-600" />, label: isEnglish ? 'Drag & Move Signature' : 'İmzayı Sürükle / Boyutlandır' },
               { icon: <ShieldAlert size={16} className="text-zinc-800" />, label: isEnglish ? 'Redact / Censor' : 'Sansürle / Karart' },
             ].map((f, i) => (
               <div key={i} className="flex items-center justify-center gap-2 p-3 bg-white rounded-2xl border border-zinc-100 shadow-sm text-xs font-semibold text-zinc-700">
@@ -1134,6 +1270,7 @@ export default function PdfEditorTool() {
                     onClick={() => {
                       setCurrentPageIndex(idx);
                       setSelectedAnnotationId(null);
+                      setSelectedTextPopup(null);
                     }}
                     className={`group relative p-2 rounded-2xl border cursor-pointer transition-all ${
                       isSelected
@@ -1719,6 +1856,33 @@ export default function PdfEditorTool() {
                     );
                   })}
                 </div>
+
+                {/* 5. Floating Action for Native PDF Selected Text (Replace Text / Redact) */}
+                {selectedTextPopup && activeTool === 'select' && (
+                  <div
+                    className="fixed z-50 bg-zinc-900 text-white rounded-2xl p-1.5 shadow-2xl flex items-center gap-1.5 border border-zinc-700 animate-fadeIn"
+                    style={{
+                      left: `${selectedTextPopup.screenX}px`,
+                      top: `${selectedTextPopup.screenY - 35}px`,
+                      transform: 'translateX(-50%)',
+                    }}
+                  >
+                    <button
+                      onClick={handleReplaceSelectedText}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition-all"
+                    >
+                      <Edit3 size={13} />
+                      <span>{isEnglish ? 'Replace / Edit Text' : 'Metni Değiştir'}</span>
+                    </button>
+                    <button
+                      onClick={handleRedactSelectedText}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs transition-all"
+                    >
+                      <ShieldAlert size={13} />
+                      <span>{isEnglish ? 'Censor' : 'Sansürle'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Bottom Floating Page Navigator */}
@@ -1727,6 +1891,7 @@ export default function PdfEditorTool() {
                   onClick={() => {
                     setCurrentPageIndex((p) => Math.max(0, p - 1));
                     setSelectedAnnotationId(null);
+                    setSelectedTextPopup(null);
                   }}
                   disabled={currentPageIndex <= 0}
                   className="p-1 rounded-full text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
@@ -1740,6 +1905,7 @@ export default function PdfEditorTool() {
                   onClick={() => {
                     setCurrentPageIndex((p) => Math.min(pdfState.numPages - 1, p + 1));
                     setSelectedAnnotationId(null);
+                    setSelectedTextPopup(null);
                   }}
                   disabled={currentPageIndex >= pdfState.numPages - 1}
                   className="p-1 rounded-full text-zinc-600 hover:bg-zinc-100 disabled:opacity-30 transition-colors"
