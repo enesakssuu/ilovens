@@ -21,6 +21,7 @@ import type {
 } from '../utils/pdfEditorUtils';
 import { downloadFile } from '../utils/imageProcessor';
 import { trackEvent } from '../utils/analytics';
+import ToolSEOContent from '../components/ToolSEOContent';
 import type * as pdfjsLib from 'pdfjs-dist';
 
 type ToolType =
@@ -2205,6 +2206,9 @@ export default function PdfEditorTool() {
           </div>
         </div>
       )}
+
+      {/* Organic Search & AI SEO Structured Content */}
+      <ToolSEOContent toolId="pdf-editor" />
     </div>
   );
 }

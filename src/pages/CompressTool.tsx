@@ -6,6 +6,7 @@ import { ArrowLeft, Download, Minimize2, CheckCircle2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { compressImage, formatBytes, savingsPercent, downloadFile } from '../utils/imageProcessor';
 import { trackEvent } from '../utils/analytics';
+import ToolSEOContent from '../components/ToolSEOContent';
 
 export default function CompressTool() {
   const { t, i18n } = useTranslation();
@@ -215,6 +216,8 @@ export default function CompressTool() {
           )}
         </AnimatePresence>
       </div>
+
+      <ToolSEOContent toolId="compress" />
     </div>
   );
 }

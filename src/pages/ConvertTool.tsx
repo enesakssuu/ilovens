@@ -6,6 +6,7 @@ import { ArrowLeft, Download, RefreshCw, CheckCircle2 } from 'lucide-react';
 import Dropzone from '../components/Dropzone';
 import { convertImage, type ImageFormat, downloadFile } from '../utils/imageProcessor';
 import { trackEvent } from '../utils/analytics';
+import ToolSEOContent from '../components/ToolSEOContent';
 
 const FORMAT_OPTIONS: { value: ImageFormat; label: string; description: string; color: string }[] = [
   { value: 'jpeg', label: 'JPG', description: 'Best for photos', color: 'bg-orange-500' },
@@ -217,6 +218,8 @@ export default function ConvertTool() {
           )}
         </AnimatePresence>
       </div>
+
+      <ToolSEOContent toolId="convert" />
     </div>
   );
 }

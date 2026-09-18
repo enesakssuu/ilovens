@@ -5,8 +5,10 @@ import { motion } from 'framer-motion';
 import {
   Sparkles, Lock, Zap, ArrowRight,
   Minimize2, Maximize2, Crop, RotateCcw, RefreshCw, Stamp, Laugh, Eye,
-  Palette, Wand2, Code2, ShieldOff, ImageDown, Globe2, FileText
+  Palette, Wand2, Code2, ShieldOff, ImageDown, Globe2, FileText,
+  ShieldCheck, HelpCircle, ChevronDown, CheckCircle2
 } from 'lucide-react';
+import SEO from '../components/SEO';
 
 interface ToolItem {
   id: string;
@@ -190,6 +192,22 @@ export default function Home() {
 
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const homeFaqs = [
+    {
+      question: isEnglish ? 'Are all PDF and image tools on iLoveNS completely free?' : 'iLoveNS üzerindeki tüm PDF ve görsel araçları gerçekten ücretsiz mi?',
+      answer: isEnglish ? 'Yes, 100% free with no hidden subscriptions, limits, or watermark stamps on your downloads.' : 'Evet, hiçbir abonelik ücreti, kota veya indirmelerde filigran dayatması olmadan tüm araçlar %100 ücretsizdir.',
+    },
+    {
+      question: isEnglish ? 'How does the privacy & zero-upload system work?' : 'Sıfır sunucu yükleme ve gizlilik mimarisi nasıl çalışır?',
+      answer: isEnglish ? 'Your files are processed locally inside your browser using WebAssembly and HTML5 Canvas. They are never sent to external servers.' : 'Yüklediğiniz dosyalar sunucularımıza gitmez. Tüm işlemler doğrudan tarayıcınızın kendi bellek ve işlemci gücüyle yerel olarak gerçekleştirilir.',
+    },
+    {
+      question: isEnglish ? 'Can I use iLoveNS PDF Editor on mobile phones?' : 'PDF Düzenleyiciyi akıllı telefon ve tabletlerde kullanabilir miyim?',
+      answer: isEnglish ? 'Yes! iLoveNS is fully responsive and optimized for touchscreens on iOS (iPhone/iPad) and Android devices.' : 'Evet! iLoveNS tüm mobil cihazlar, tabletler ve masaüstü tarayıcılarla %100 tam uyumlu ve dokunmatik optimize olarak çalışır.',
+    },
+  ];
 
   useEffect(() => {
     trackEvent({ type: 'pageview', toolName: 'Ana Sayfa' });
@@ -404,6 +422,88 @@ export default function Home() {
           );
         })}
       </div>
+
+      {/* SEO & Structured Data for Home */}
+      <SEO
+        title={isEnglish ? 'iLoveNS — Free Online PDF & Image Tools (100% Private & Browser-Based)' : 'iLoveNS — Ücretsiz Online PDF & Görsel Araçları (%100 Güvenli & Sunucusuz)'}
+        description={isEnglish ? 'Free browser-based PDF Editor, Image Compressor, Format Converter, and Photo Tools. 100% Client-Side with zero server uploads.' : 'Tarayıcınızda çalışan ücretsiz PDF Düzenleyici, Görsel Sıkıştırıcı, Format Dönüştürücü ve Fotoğraf Araçları. Sunucusuz, sıfır yükleme, anında işlem.'}
+        keywords={isEnglish ? ['pdf editor', 'image compressor', 'format converter', 'free photo tools', 'browser pdf editor'] : ['pdf düzenleyici', 'görsel sıkıştırma', 'format dönüştürücü', 'fotoğraf araçları', 'online pdf düzenleme']}
+        canonicalPath={isEnglish ? '/en' : '/'}
+        faqs={homeFaqs}
+      />
+
+      {/* Home Value Proposition & FAQ Section */}
+      <section className="mt-28 max-w-4xl mx-auto border-t border-zinc-200/80 pt-16">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-xs font-bold mb-3">
+            <ShieldCheck size={14} />
+            <span>{isEnglish ? 'Enterprise-Grade Security' : 'Gizlilik Öncelikli Mimari'}</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-brand-text tracking-tight">
+            {isEnglish ? 'Why Choose iLoveNS?' : 'Neden iLoveNS Araçları?'}
+          </h2>
+          <p className="text-zinc-500 text-sm mt-2 max-w-xl mx-auto">
+            {isEnglish
+              ? 'Unlike traditional online tools, your files never leave your device. Zero cloud storage, zero tracking.'
+              : 'Geleneksel web sitelerinin aksine dosyalarınız sunucuya yüklenmez; her şey cihazınızda yerel çalışır.'}
+          </p>
+        </div>
+
+        {/* Security / Speed Badges */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-14">
+          <div className="p-5 rounded-2xl bg-white border border-zinc-100 shadow-sm text-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+              <ShieldCheck size={20} />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 mb-1">{isEnglish ? 'Zero Server Upload' : 'Sıfır Sunucu Yükleme'}</h3>
+            <p className="text-xs text-zinc-500">{isEnglish ? 'Files are parsed locally in browser memory.' : 'Dosyalarınız asla harici sunuculara gitmez.'}</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-zinc-100 shadow-sm text-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+              <Zap size={20} />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 mb-1">{isEnglish ? 'Instant Speed' : 'Işık Hızında'}</h3>
+            <p className="text-xs text-zinc-500">{isEnglish ? 'No network upload or download lag.' : 'İnternet yükleme beklemesi olmadan anında sonuç.'}</p>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-zinc-100 shadow-sm text-center">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 size={20} />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 mb-1">{isEnglish ? '100% Free Forever' : '%100 Ücretsiz'}</h3>
+            <p className="text-xs text-zinc-500">{isEnglish ? 'No account registration, no paywalls.' : 'Üyelik, kayıt veya gizli ücret yok.'}</p>
+          </div>
+        </div>
+
+        {/* Home FAQ Accordion */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 mb-4">
+            <HelpCircle size={18} className="text-brand-purple" />
+            <h3 className="text-lg font-bold text-zinc-900">{isEnglish ? 'Frequently Asked Questions' : 'Sıkça Sorulan Sorular'}</h3>
+          </div>
+          {homeFaqs.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div key={idx} className="border border-zinc-200/80 rounded-2xl overflow-hidden bg-white">
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full text-left px-5 py-3.5 flex items-center justify-between gap-4 font-semibold text-sm text-zinc-900 hover:text-indigo-600 transition-colors"
+                >
+                  <span>{faq.question}</span>
+                  <ChevronDown
+                    size={16}
+                    className={`text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-indigo-600' : ''}`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-4 pt-1 text-xs text-zinc-600 leading-relaxed border-t border-zinc-100 bg-zinc-50/50">
+                    {faq.answer}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

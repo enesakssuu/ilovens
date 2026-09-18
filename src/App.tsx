@@ -20,6 +20,11 @@ import BlurFaceTool from './pages/BlurFaceTool';
 import ColorPaletteTool from './pages/ColorPaletteTool';
 import PhotoEditorTool from './pages/PhotoEditorTool';
 import PdfEditorTool from './pages/PdfEditorTool';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import AboutUs from './pages/AboutUs';
+import Contact from './pages/Contact';
+import CookiePolicy from './pages/CookiePolicy';
 import NotFound from './pages/NotFound';
 
 function ScrollToTop() {
@@ -50,10 +55,20 @@ const toolRoutes = [
   { path: 'pdf-editor', element: <PdfEditorTool /> },
 ];
 
+const infoRoutes = [
+  { path: 'privacy-policy', element: <PrivacyPolicy /> },
+  { path: 'terms', element: <TermsOfService /> },
+  { path: 'about', element: <AboutUs /> },
+  { path: 'contact', element: <Contact /> },
+  { path: 'cookies', element: <CookiePolicy /> },
+];
+
+const allRoutes = [...toolRoutes, ...infoRoutes];
+
 const validPaths = new Set([
   '/', '/en',
-  ...toolRoutes.map((r) => `/${r.path}`),
-  ...toolRoutes.map((r) => `/en/${r.path}`),
+  ...allRoutes.map((r) => `/${r.path}`),
+  ...allRoutes.map((r) => `/en/${r.path}`),
 ]);
 
 function LangWrapper() {
@@ -83,7 +98,6 @@ function LangWrapper() {
   );
 }
 
-
 export default function App() {
   return (
     <BrowserRouter basename="/ilovens">
@@ -92,13 +106,13 @@ export default function App() {
         <Route element={<LangWrapper />}>
           {/* Turkish (Default) Routes */}
           <Route path="/" element={<Home />} />
-          {toolRoutes.map((r) => (
+          {allRoutes.map((r) => (
             <Route key={r.path} path={r.path} element={r.element} />
           ))}
 
           {/* English Routes */}
           <Route path="/en" element={<Home />} />
-          {toolRoutes.map((r) => (
+          {allRoutes.map((r) => (
             <Route key={`en-${r.path}`} path={`en/${r.path}`} element={r.element} />
           ))}
 
